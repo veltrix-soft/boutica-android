@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, ScrollView, ActivityIndicator,
-  KeyboardAvoidingView, Platform, StyleSheet,
+  KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View,
 } from 'react-native';
-import { Link, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 import Decimal from 'decimal.js';
 import { getSale, listAllVariants } from '../features/sales/api';
 import {
@@ -14,7 +15,10 @@ import { ApiError, userMessage } from '../api/errors';
 import { newIdempotencyKey } from '../lib/idempotency';
 import { formatMoney } from '../lib/money';
 import { returnConditionLabel } from '../lib/format';
-import { colors, spacing } from '../theme/colors';
+import {
+  Button, ErrorState, FormField, LoadingState, Notice, ScreenContainer, ScreenHeader,
+} from '../components/ui';
+import { colors, radius, spacing } from '../theme/colors';
 
 type Line = { qty: number; condition: ReturnCondition };
 const BASE: Line = { qty: 0, condition: 'RESTOCK' };
@@ -22,6 +26,7 @@ const BASE: Line = { qty: 0, condition: 'RESTOCK' };
 export default function NewReturn() {
   const { saleId } = useLocalSearchParams<{ saleId: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const qc = useQueryClient();
 
   const sale = useQuery({
@@ -44,10 +49,12 @@ export default function NewReturn() {
   const [lines, setLines] = useState<Record<string, Line>>({});
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
+  // Clé anti-doublon liée au contenu exact du retour
   const keyRef = useRef<{ fp: string; key: string } | null>(null);
 
   const loadError = sale.error ?? past.error ?? pastDetails.find((q) => q.error)?.error;
   const ready = !!sale.data && !!past.data && pastDetails.every((q) => !!q.data);
+  const completed = ready && sale.data?.status === 'COMPLETED';
 
   const names = new Map((variants.data?.data ?? []).map((v) => [v.id, v.name]));
   const returned = new Map<string, number>();
@@ -61,19 +68,20 @@ export default function NewReturn() {
     setLines((prev) => ({ ...prev, [id]: { ...(prev[id] ?? BASE), ...patch } }));
 
   const items = sale.data?.items ?? [];
-  const estimate = items.reduce((sum, it) => {
-    const q = lines[it.id]?.qty ?? 0;
-    return sum.plus(new Decimal(it.unitPrice).times(q));
-  }, new Decimal(0));
+  const selectedCount = items.filter((it) => (lines[it.id]?.qty ?? 0) > 0).length;
+  const estimate = items.reduce(
+    (sum, it) => sum.plus(new Decimal(it.unitPrice).times(lines[it.id]?.qty ?? 0)),
+    new Decimal(0),
+  );
 
   const m = useMutation({
-    mutationFn: (v: { payload: ReturnInput; key: string }) =>
-      createReturn(v.payload, v.key),
+    mutationFn: (v: { payload: ReturnInput; key: string }) => createReturn(v.payload, v.key),
     onSuccess: async (ret) => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['returns'] }),
         qc.invalidateQueries({ queryKey: ['dashboard'] }),
         qc.invalidateQueries({ queryKey: ['stock'] }),
+        qc.invalidateQueries({ queryKey: ['variants'] }),
       ]);
       if (ret?.id) router.replace({ pathname: '/return', params: { id: ret.id } });
       else router.back();
@@ -91,7 +99,7 @@ export default function NewReturn() {
   });
 
   function onSubmit() {
-    if (m.isPending || !sale.data) return;
+    if (m.isPending || !sale.data) return; // évite le double envoi
     const selected = items
       .filter((it) => (lines[it.id]?.qty ?? 0) > 0)
       .map((it) => ({
@@ -121,133 +129,130 @@ export default function NewReturn() {
       style={s.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={s.container} keyboardShouldPersistTaps="handled">
-        <Link href={{ pathname: '/sale', params: { id: saleId } }} style={s.back}>
-          ‹ Annuler
-        </Link>
-        <Text style={s.title}>Retour d'articles</Text>
+      <ScreenContainer scroll bottomInset={false}>
+        <ScreenHeader title="Retour d'articles" subtitle="Choisissez les articles rapportés" />
 
-        {!ready && !loadError && <ActivityIndicator color={colors.primary} />}
-        {loadError && <Text style={s.error}>{userMessage(loadError)}</Text>}
+        {!ready && !loadError ? <LoadingState /> : null}
+        {loadError ? <ErrorState message={userMessage(loadError)} /> : null}
+        {ready && !completed ? (
+          <Notice>Seule une vente terminée peut avoir un retour.</Notice>
+        ) : null}
 
-        {ready && sale.data && sale.data.status !== 'COMPLETED' && (
-          <Text style={s.error}>Seule une vente terminée peut avoir un retour.</Text>
-        )}
-
-        {ready && sale.data && sale.data.status === 'COMPLETED' && (
+        {completed ? (
           <>
-            <Text style={s.muted}>Choisissez les articles rapportés par le client.</Text>
-
-            {items.map((it) => {
-              const remaining = Math.max(0, it.quantity - (returned.get(it.id) ?? 0));
-              const line = lines[it.id] ?? BASE;
-              return (
-                <View key={it.id} style={s.card}>
-                  <Text style={s.name}>
-                    {names.get(it.variantId) ?? `Article ${it.variantId.slice(0, 8)}`}
-                  </Text>
-                  <Text style={s.muted}>
-                    {formatMoney(it.unitPrice)} · vendu : {it.quantity} · déjà retourné :{' '}
-                    {returned.get(it.id) ?? 0} · reste : {remaining}
-                  </Text>
-
-                  {remaining === 0 ? (
-                    <Text style={s.small}>Tout a déjà été retourné.</Text>
-                  ) : (
-                    <>
-                      <View style={s.stepper}>
-                        <Pressable style={s.stepBtn} accessibilityRole="button"
-                          onPress={() => set(it.id, { qty: Math.max(0, line.qty - 1) })}>
-                          <Text style={s.stepText}>−</Text>
-                        </Pressable>
-                        <Text style={s.qty}>{line.qty}</Text>
-                        <Pressable style={s.stepBtn} accessibilityRole="button"
-                          onPress={() => set(it.id, { qty: Math.min(remaining, line.qty + 1) })}>
-                          <Text style={s.stepText}>+</Text>
-                        </Pressable>
-                      </View>
-
-                      {line.qty > 0 && (
-                        <View style={s.chips}>
-                          {(['RESTOCK', 'DAMAGED'] as ReturnCondition[]).map((c) => (
-                            <Pressable key={c} accessibilityRole="button"
-                              style={[s.chip, line.condition === c && s.chipOn]}
-                              onPress={() => set(it.id, { condition: c })}>
-                              <Text style={[s.chipText, line.condition === c && s.chipTextOn]}>
-                                {returnConditionLabel(c)}
-                              </Text>
-                            </Pressable>
-                          ))}
+            <View style={s.list}>
+              {items.map((it) => {
+                const remaining = Math.max(0, it.quantity - (returned.get(it.id) ?? 0));
+                const line = lines[it.id] ?? BASE;
+                return (
+                  <View key={it.id} style={s.card}>
+                    <Text style={s.name}>
+                      {names.get(it.variantId) ?? `Article ${it.variantId.slice(0, 8)}`}
+                    </Text>
+                    <Text style={s.caption}>
+                      {formatMoney(it.unitPrice)} · vendu {it.quantity} · déjà retourné{' '}
+                      {returned.get(it.id) ?? 0} · reste {remaining}
+                    </Text>
+                    {remaining === 0 ? (
+                      <Text style={s.caption}>Tout a déjà été retourné.</Text>
+                    ) : (
+                      <>
+                        <View style={s.stepper}>
+                          <Pressable
+                            style={s.stepBtn}
+                            onPress={() => set(it.id, { qty: Math.max(0, line.qty - 1) })}
+                            accessibilityRole="button"
+                            accessibilityLabel="Retirer un"
+                          >
+                            <Ionicons name="remove" size={20} color={colors.text} />
+                          </Pressable>
+                          <Text style={s.qty}>{line.qty}</Text>
+                          <Pressable
+                            style={[s.stepBtn, line.qty >= remaining && s.stepDisabled]}
+                            onPress={() => set(it.id, { qty: Math.min(remaining, line.qty + 1) })}
+                            disabled={line.qty >= remaining}
+                            accessibilityRole="button"
+                            accessibilityLabel="Ajouter un"
+                          >
+                            <Ionicons name="add" size={20} color={colors.text} />
+                          </Pressable>
                         </View>
-                      )}
-                    </>
-                  )}
-                </View>
-              );
-            })}
-
-            <Text style={s.label}>Motif (facultatif)</Text>
-            <TextInput style={[s.input, s.multiline]} value={reason}
-              onChangeText={setReason} multiline maxLength={500}
-              editable={!m.isPending} />
-
-            <View style={s.totals}>
-              <Text style={s.muted}>Montant estimé (le serveur fait le calcul final)</Text>
-              <Text style={s.totalValue}>{formatMoney(estimate.toFixed(2))}</Text>
+                        {line.qty > 0 ? (
+                          <View style={s.chips}>
+                            {(['RESTOCK', 'DAMAGED'] as ReturnCondition[]).map((c) => (
+                              <Pressable
+                                key={c}
+                                style={[s.chip, line.condition === c && s.chipOn]}
+                                onPress={() => set(it.id, { condition: c })}
+                                accessibilityRole="button"
+                              >
+                                <Text style={[s.chipText, line.condition === c && s.chipTextOn]}>
+                                  {returnConditionLabel(c)}
+                                </Text>
+                              </Pressable>
+                            ))}
+                          </View>
+                        ) : null}
+                      </>
+                    )}
+                  </View>
+                );
+              })}
             </View>
-
-            {error && <Text style={s.error}>{error}</Text>}
-
-            <Pressable style={[s.button, m.isPending && s.disabled]} onPress={onSubmit}
-              disabled={m.isPending} accessibilityRole="button">
-              {m.isPending ? <ActivityIndicator color="#FFFFFF" />
-                : <Text style={s.buttonText}>Enregistrer le retour</Text>}
-            </Pressable>
+            <View style={s.reason}>
+              <FormField label="Motif (facultatif)" value={reason} onChangeText={setReason}
+                multiline maxLength={500} editable={!m.isPending} />
+            </View>
           </>
-        )}
-      </ScrollView>
+        ) : null}
+      </ScreenContainer>
+
+      {completed ? (
+        <View style={[s.footer, { paddingBottom: insets.bottom + spacing.sm }]}>
+          {error ? <Notice>{error}</Notice> : null}
+          <View style={s.totalRow}>
+            <Text style={[s.caption, s.flexText]}>
+              Montant estimé (calcul final par le serveur)
+            </Text>
+            <Text style={s.totalValue}>{formatMoney(estimate.toFixed(2))}</Text>
+          </View>
+          <Button
+            label="Enregistrer le retour"
+            icon="checkmark"
+            onPress={onSubmit}
+            loading={m.isPending}
+            disabled={selectedCount === 0}
+          />
+        </View>
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
 
 const s = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
-  container: { padding: spacing.lg, paddingTop: spacing.xl * 2 },
-  back: { color: colors.primary, fontWeight: '600', marginBottom: spacing.sm },
-  title: { fontSize: 28, fontWeight: '700', color: colors.primary },
-  muted: { color: colors.textMuted },
-  small: { color: colors.textMuted, fontSize: 13, marginTop: spacing.sm },
-  label: { color: colors.text, fontWeight: '600', marginTop: spacing.lg,
-    marginBottom: spacing.xs },
-  card: { backgroundColor: colors.surface, borderRadius: 12, padding: spacing.md,
-    marginTop: spacing.sm, borderWidth: 1, borderColor: colors.border },
-  name: { color: colors.text, fontSize: 16, fontWeight: '600' },
-  stepper: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm,
-    gap: spacing.md },
-  stepBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.background,
-    borderWidth: 1, borderColor: colors.border, alignItems: 'center',
-    justifyContent: 'center' },
-  stepText: { color: colors.primary, fontSize: 22, fontWeight: '700' },
-  qty: { color: colors.text, fontSize: 20, fontWeight: '700', minWidth: 30,
-    textAlign: 'center' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm,
-    marginTop: spacing.sm },
-  chip: { borderWidth: 1, borderColor: colors.border, borderRadius: 16,
-    paddingHorizontal: spacing.md, minHeight: 36, justifyContent: 'center' },
+  flexText: { flex: 1 },
+  list: { gap: spacing.sm, marginTop: spacing.sm },
+  card: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1,
+    borderColor: colors.border, padding: spacing.md, gap: spacing.xs },
+  name: { fontSize: 15, fontWeight: '600', color: colors.text },
+  caption: { fontSize: 13, color: colors.textMuted },
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
+  stepBtn: { width: 44, height: 44, borderRadius: radius.md, borderWidth: 1,
+    borderColor: colors.border, backgroundColor: colors.surfaceMuted,
+    alignItems: 'center', justifyContent: 'center' },
+  stepDisabled: { opacity: 0.4 },
+  qty: { minWidth: 32, textAlign: 'center', fontSize: 17, fontWeight: '700', color: colors.text },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.xs },
+  chip: { minHeight: 36, justifyContent: 'center', paddingHorizontal: spacing.md,
+    borderRadius: 18, borderWidth: 1, borderColor: colors.border },
   chipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { color: colors.primary, fontWeight: '600' },
+  chipText: { fontSize: 13, fontWeight: '600', color: colors.text },
   chipTextOn: { color: '#FFFFFF' },
-  input: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 8, padding: spacing.md, color: colors.text, fontSize: 16 },
-  multiline: { minHeight: 80, textAlignVertical: 'top' },
-  totals: { backgroundColor: colors.surface, borderRadius: 12, padding: spacing.md,
-    marginTop: spacing.lg, borderWidth: 1, borderColor: colors.border },
-  totalValue: { color: colors.primary, fontSize: 22, fontWeight: '700',
-    marginTop: spacing.xs },
-  error: { color: colors.danger, marginTop: spacing.md },
-  button: { backgroundColor: colors.primary, borderRadius: 8, padding: spacing.md,
-    minHeight: 48, alignItems: 'center', justifyContent: 'center',
-    marginTop: spacing.lg },
-  disabled: { opacity: 0.6 },
-  buttonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 },
+  reason: { marginTop: spacing.md },
+  footer: { backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border,
+    paddingHorizontal: spacing.md, paddingTop: spacing.sm + 4 },
+  totalRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    marginBottom: spacing.sm },
+  totalValue: { fontSize: 22, fontWeight: '700', color: colors.text },
 });

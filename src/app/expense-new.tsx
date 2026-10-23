@@ -1,13 +1,12 @@
 import { useState } from 'react';
-import {
-  View, Text, TextInput, Pressable, ActivityIndicator, ScrollView,
-  KeyboardAvoidingView, Platform, StyleSheet,
-} from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createExpense } from '../features/expenses/api';
 import { ApiError, userMessage } from '../api/errors';
 import { parseAmount } from '../lib/money';
+import { Button, FormField, Notice } from '../components/ui';
+import { FormScreen } from '../components/form';
 import { colors, spacing } from '../theme/colors';
 
 // Simples suggestions de saisie : la catégorie reste un texte libre
@@ -62,67 +61,31 @@ export default function NewExpense() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={s.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView contentContainerStyle={s.container} keyboardShouldPersistTaps="handled">
-        <Link href="/expenses" style={s.back}>‹ Annuler</Link>
-        <Text style={s.title}>Nouvelle dépense</Text>
-
-        <Text style={s.label}>Catégorie *</Text>
-        <TextInput style={s.input} value={category} onChangeText={setCategory}
-          maxLength={120} editable={!m.isPending} />
-        <View style={s.chips}>
-          {SUGGESTIONS.map((c) => (
-            <Pressable key={c} style={s.chip} onPress={() => setCategory(c)}
-              accessibilityRole="button">
-              <Text style={s.chipText}>{c}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Text style={s.label}>Montant *</Text>
-        <TextInput style={s.input} value={amount} onChangeText={setAmount}
-          keyboardType="decimal-pad" editable={!m.isPending} />
-
-        <Text style={s.label}>Description</Text>
-        <TextInput style={[s.input, s.multiline]} value={description}
-          onChangeText={setDescription} multiline maxLength={500}
-          editable={!m.isPending} />
-
-        {error && <Text style={s.error}>{error}</Text>}
-
-        <Pressable style={[s.button, m.isPending && s.disabled]} onPress={onSubmit}
-          disabled={m.isPending} accessibilityRole="button">
-          {m.isPending ? <ActivityIndicator color="#FFFFFF" />
-            : <Text style={s.buttonText}>Enregistrer la dépense</Text>}
-        </Pressable>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    <FormScreen title="Nouvelle dépense">
+      <FormField label="Catégorie" required value={category} onChangeText={setCategory}
+        maxLength={120} editable={!m.isPending} />
+      <View style={s.chips}>
+        {SUGGESTIONS.map((c) => (
+          <Pressable key={c} style={s.chip} onPress={() => setCategory(c)}
+            accessibilityRole="button">
+            <Text style={s.chipText}>{c}</Text>
+          </Pressable>
+        ))}
+      </View>
+      <FormField label="Montant" required value={amount} onChangeText={setAmount}
+        keyboardType="decimal-pad" editable={!m.isPending} />
+      <FormField label="Description" value={description} onChangeText={setDescription}
+        multiline maxLength={500} editable={!m.isPending} />
+      {error ? <Notice>{error}</Notice> : null}
+      <Button label="Enregistrer la dépense" onPress={onSubmit} loading={m.isPending} />
+    </FormScreen>
   );
 }
 
 const s = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.background },
-  container: { padding: spacing.lg, paddingTop: spacing.xl * 2 },
-  back: { color: colors.primary, fontWeight: '600', marginBottom: spacing.sm },
-  title: { fontSize: 28, fontWeight: '700', color: colors.primary,
-    marginBottom: spacing.lg },
-  label: { color: colors.text, fontWeight: '600', marginBottom: spacing.xs },
-  input: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 8, padding: spacing.md, marginBottom: spacing.sm,
-    color: colors.text, fontSize: 16 },
-  multiline: { minHeight: 90, textAlignVertical: 'top' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm,
-    marginBottom: spacing.md },
-  chip: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 16, paddingHorizontal: spacing.md, minHeight: 36,
-    justifyContent: 'center' },
-  chipText: { color: colors.primary, fontWeight: '600' },
-  error: { color: colors.danger, marginBottom: spacing.md },
-  button: { backgroundColor: colors.primary, borderRadius: 8, padding: spacing.md,
-    minHeight: 48, alignItems: 'center', justifyContent: 'center' },
-  disabled: { opacity: 0.6 },
-  buttonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+  chip: { minHeight: 36, justifyContent: 'center', paddingHorizontal: spacing.md,
+    borderRadius: 18, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.surfaceMuted },
+  chipText: { fontSize: 13, fontWeight: '600', color: colors.text },
 });

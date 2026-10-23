@@ -1,5 +1,5 @@
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import { Link, useLocalSearchParams } from 'expo-router';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import Decimal from 'decimal.js';
 import { getPurchase } from '../features/purchases/api';
@@ -8,7 +8,11 @@ import { listSupplierOptions } from '../features/suppliers/api';
 import { userMessage } from '../api/errors';
 import { formatMoney } from '../lib/money';
 import { formatDateTime, purchaseStatusLabel } from '../lib/format';
-import { colors, spacing } from '../theme/colors';
+import {
+  ErrorState, ListItem, LoadingState, ScreenContainer, ScreenHeader,
+  SectionHeader, StatusBadge,
+} from '../components/ui';
+import { colors, radius, spacing } from '../theme/colors';
 
 export default function PurchaseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -18,10 +22,7 @@ export default function PurchaseDetailScreen() {
     queryFn: () => getPurchase(id),
     enabled: !!id,
   });
-  const variants = useQuery({
-    queryKey: ['variants', 'all'],
-    queryFn: listAllVariants,
-  });
+  const variants = useQuery({ queryKey: ['variants', 'all'], queryFn: listAllVariants });
   const d = purchase.data;
   const suppliers = useQuery({
     queryKey: ['suppliers', 'options'],
@@ -35,70 +36,59 @@ export default function PurchaseDetailScreen() {
     : undefined;
 
   return (
-    <ScrollView contentContainerStyle={s.container}>
-      <Link href="/purchases" style={s.back}>‹ Achats</Link>
-      <Text style={s.title}>Reçu d'achat</Text>
-
-      {purchase.isLoading && <ActivityIndicator color={colors.primary} />}
-      {purchase.error && <Text style={s.error}>{userMessage(purchase.error)}</Text>}
-
-      {d && (
-        <>
-          <Text style={s.muted}>
-            {formatDateTime(d.createdAt)} · {purchaseStatusLabel(d.status)}
-          </Text>
-          {d.supplierId && (
-            <Text style={s.muted}>
-              Fournisseur : {supplierName ?? 'non retrouvé'}
-            </Text>
-          )}
-
-          <Text style={s.section}>Articles ({d.items.length})</Text>
-          {d.items.map((it) => (
-            <View key={it.id} style={s.line}>
-              <View style={s.flex}>
-                <Text style={s.name}>
-                  {names.get(it.variantId) ?? `Article ${it.variantId.slice(0, 8)}`}
-                </Text>
-                <Text style={s.muted}>
-                  {formatMoney(it.unitPrice)} × {it.quantity}
-                </Text>
-              </View>
-              <Text style={s.lineTotal}>
-                {formatMoney(new Decimal(it.unitPrice).times(it.quantity).toFixed(2))}
-              </Text>
-            </View>
-          ))}
-
-          <View style={s.totals}>
-            <View style={s.row}>
-              <Text style={s.totalLabel}>Total</Text>
-              <Text style={s.totalValue}>{formatMoney(d.total)}</Text>
-            </View>
+    <ScreenContainer>
+      <ScreenHeader
+        title="Reçu d'achat"
+        subtitle={
+          d
+            ? [formatDateTime(d.createdAt), d.supplierId ? supplierName ?? 'Fournisseur non retrouvé' : null]
+                .filter(Boolean)
+                .join(' · ')
+            : undefined
+        }
+        right={
+          d ? (
+            <StatusBadge
+              label={purchaseStatusLabel(d.status)}
+              tone={d.status === 'RECEIVED' ? 'success' : d.status === 'CANCELLED' ? 'danger' : 'neutral'}
+            />
+          ) : undefined
+        }
+      />
+      {purchase.isLoading ? (
+        <LoadingState />
+      ) : purchase.error ? (
+        <ErrorState message={userMessage(purchase.error)} onRetry={() => purchase.refetch()} />
+      ) : d ? (
+        <ScrollView contentContainerStyle={s.content}>
+          <SectionHeader title={`Articles (${d.items.length})`} />
+          <View style={s.list}>
+            {d.items.map((it) => (
+              <ListItem
+                key={it.id}
+                title={names.get(it.variantId) ?? `Article ${it.variantId.slice(0, 8)}`}
+                subtitle={`${formatMoney(it.unitPrice)} × ${it.quantity}`}
+                meta={formatMoney(new Decimal(it.unitPrice).times(it.quantity).toFixed(2))}
+              />
+            ))}
           </View>
-        </>
-      )}
-    </ScrollView>
+          <View style={s.totals}>
+            <Text style={s.totalLabel}>Total</Text>
+            <Text style={s.totalValue}>{formatMoney(d.total)}</Text>
+          </View>
+        </ScrollView>
+      ) : null}
+    </ScreenContainer>
   );
 }
 
 const s = StyleSheet.create({
-  flex: { flex: 1 },
-  container: { padding: spacing.lg, paddingTop: spacing.xl * 2,
-    backgroundColor: colors.background, flexGrow: 1 },
-  back: { color: colors.primary, fontWeight: '600', marginBottom: spacing.sm },
-  title: { fontSize: 28, fontWeight: '700', color: colors.primary },
-  muted: { color: colors.textMuted },
-  section: { fontSize: 18, fontWeight: '700', color: colors.text, marginTop: spacing.lg },
-  error: { color: colors.danger, marginTop: spacing.md },
-  line: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
-    borderRadius: 12, padding: spacing.md, marginTop: spacing.sm,
-    borderWidth: 1, borderColor: colors.border },
-  name: { color: colors.text, fontSize: 16, fontWeight: '600' },
-  lineTotal: { color: colors.text, fontSize: 16, fontWeight: '700' },
-  totals: { backgroundColor: colors.surface, borderRadius: 12, padding: spacing.md,
-    marginTop: spacing.lg, borderWidth: 1, borderColor: colors.border },
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
-  totalLabel: { color: colors.text, fontSize: 18, fontWeight: '700' },
-  totalValue: { color: colors.primary, fontSize: 22, fontWeight: '700' },
+  content: { paddingBottom: spacing.xl },
+  list: { gap: spacing.sm },
+  totals: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1,
+    borderColor: colors.border, padding: spacing.md, marginTop: spacing.md },
+  totalLabel: { fontSize: 17, fontWeight: '700', color: colors.text },
+  totalValue: { fontSize: 22, fontWeight: '700', color: colors.primary,
+    fontVariant: ['tabular-nums'] },
 });

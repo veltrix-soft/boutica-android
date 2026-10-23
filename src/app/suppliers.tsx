@@ -1,13 +1,16 @@
-import {
-  View, Text, FlatList, ActivityIndicator, RefreshControl, StyleSheet,
-} from 'react-native';
-import { Link } from 'expo-router';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { listSuppliers } from '../features/suppliers/api';
 import { userMessage } from '../api/errors';
+import {
+  Button, EmptyState, ErrorState, ListItem, LoadingState, Notice,
+  ScreenContainer, ScreenHeader,
+} from '../components/ui';
 import { colors, spacing } from '../theme/colors';
 
 export default function SuppliersScreen() {
+  const router = useRouter();
   const q = useInfiniteQuery({
     queryKey: ['suppliers'],
     queryFn: ({ pageParam }) => listSuppliers(pageParam),
@@ -21,58 +24,58 @@ export default function SuppliersScreen() {
   const total = q.data?.pages[0]?.total ?? 0;
 
   return (
-    <View style={s.container}>
-      <Link href="/" style={s.back}>‹ Retour</Link>
-      <Text style={s.title}>Fournisseurs</Text>
-      <Link href="/supplier-new" style={s.add}>+ Nouveau fournisseur</Link>
-      {q.data && <Text style={s.muted}>{total} fournisseur(s)</Text>}
-
-      {q.isLoading && <ActivityIndicator color={colors.primary} style={s.gap} />}
-      {q.error && <Text style={s.error}>{userMessage(q.error)}</Text>}
-
-      <FlatList
-        data={items}
-        keyExtractor={(x) => x.id}
-        refreshControl={
-          <RefreshControl
-            refreshing={q.isRefetching && !q.isFetchingNextPage}
-            onRefresh={() => q.refetch()}
-          />
-        }
-        onEndReached={() => {
-          if (q.hasNextPage && !q.isFetchingNextPage) q.fetchNextPage();
-        }}
-        onEndReachedThreshold={0.4}
-        renderItem={({ item }) => (
-          <View style={s.card}>
-            <Text style={s.name}>{item.name}</Text>
-            {item.phone && <Text style={s.muted}>{item.phone}</Text>}
-          </View>
-        )}
-        ListEmptyComponent={
-          !q.isLoading && !q.error ? (
-            <Text style={s.empty}>Aucun fournisseur pour le moment.</Text>
-          ) : null
-        }
-        ListFooterComponent={
-          q.isFetchingNextPage ? <ActivityIndicator color={colors.primary} /> : null
+    <ScreenContainer>
+      <ScreenHeader
+        title="Fournisseurs"
+        subtitle={q.data ? `${total} fournisseur(s)` : undefined}
+        right={
+          <Button label="Nouveau" icon="add" compact fullWidth={false}
+            onPress={() => router.push('/supplier-new')} />
         }
       />
-    </View>
+      {q.isLoading ? (
+        <LoadingState />
+      ) : q.error && items.length === 0 ? (
+        <ErrorState message={userMessage(q.error)} onRetry={() => q.refetch()} />
+      ) : (
+        <FlatList
+          data={items}
+          keyExtractor={(x) => x.id}
+          contentContainerStyle={s.list}
+          ItemSeparatorComponent={() => <View style={s.gap} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={q.isRefetching && !q.isFetchingNextPage}
+              onRefresh={() => q.refetch()}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
+          onEndReached={() => {
+            if (q.hasNextPage && !q.isFetchingNextPage) q.fetchNextPage();
+          }}
+          onEndReachedThreshold={0.4}
+          ListHeaderComponent={q.error ? <Notice>{userMessage(q.error)}</Notice> : null}
+          renderItem={({ item }) => (
+            <ListItem icon="business-outline" title={item.name} subtitle={item.phone} />
+          )}
+          ListEmptyComponent={
+            <EmptyState
+              icon="business-outline"
+              title="Aucun fournisseur"
+              message="Enregistrez vos fournisseurs pour les associer à vos achats."
+              actionLabel="Nouveau fournisseur"
+              onAction={() => router.push('/supplier-new')}
+            />
+          }
+          ListFooterComponent={q.isFetchingNextPage ? <LoadingState compact /> : null}
+        />
+      )}
+    </ScreenContainer>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, padding: spacing.lg, paddingTop: spacing.xl * 2,
-    backgroundColor: colors.background },
-  back: { color: colors.primary, fontWeight: '600', marginBottom: spacing.sm },
-  title: { fontSize: 28, fontWeight: '700', color: colors.primary },
-  add: { color: colors.primary, fontWeight: '700', marginVertical: spacing.sm },
-  muted: { color: colors.textMuted },
-  gap: { marginTop: spacing.lg },
-  error: { color: colors.danger, marginTop: spacing.md, textAlign: 'center' },
-  card: { backgroundColor: colors.surface, borderRadius: 12, padding: spacing.md,
-    marginTop: spacing.sm, borderWidth: 1, borderColor: colors.border },
-  name: { color: colors.text, fontSize: 17, fontWeight: '600' },
-  empty: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl },
+  list: { paddingBottom: spacing.lg },
+  gap: { height: spacing.sm },
 });

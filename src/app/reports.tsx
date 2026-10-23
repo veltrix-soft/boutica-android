@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import {
-  View, Text, Pressable, ActivityIndicator, ScrollView, StyleSheet,
-} from 'react-native';
-import { Link } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { downloadAndShare, ReportKind } from '../features/reports/download';
+import { Button, Notice, ScreenContainer, ScreenHeader, SectionHeader } from '../components/ui';
 import { colors, spacing } from '../theme/colors';
 
 type PeriodKey = 'month' | '7' | '30';
@@ -41,31 +39,27 @@ export default function ReportsScreen() {
     }
   }
 
-  function Btn({ kind, label }: { kind: ReportKind; label: string }) {
-    const loading = busy === kind;
-    return (
-      <Pressable
-        style={[s.button, !!busy && s.disabled]}
+  const btn = (kind: ReportKind, label: string, icon: 'document-text-outline' | 'grid-outline') => (
+    <View style={s.flex}>
+      <Button
+        label={label}
+        icon={icon}
+        variant="secondary"
+        loading={busy === kind}
+        disabled={!!busy && busy !== kind}
         onPress={() => run(kind)}
-        disabled={!!busy}
-        accessibilityRole="button"
-      >
-        {loading ? <ActivityIndicator color="#FFFFFF" />
-          : <Text style={s.buttonText}>{label}</Text>}
-      </Pressable>
-    );
-  }
+      />
+    </View>
+  );
 
   return (
-    <ScrollView contentContainerStyle={s.container}>
-      <Link href="/" style={s.back}>‹ Retour</Link>
-      <Text style={s.title}>Rapports</Text>
-      <Text style={s.muted}>
-        Le fichier est généré par le serveur (quelques secondes), puis vous pouvez
-        l'envoyer ou l'ouvrir avec une autre application.
-      </Text>
+    <ScreenContainer scroll>
+      <ScreenHeader
+        title="Rapports"
+        subtitle="Générés par le serveur, puis partageables"
+      />
 
-      <Text style={s.section}>Ventes</Text>
+      <SectionHeader title="Ventes" />
       <View style={s.chips}>
         {PERIODS.map((p) => (
           <Pressable
@@ -78,39 +72,33 @@ export default function ReportsScreen() {
           </Pressable>
         ))}
       </View>
-      <Btn kind="sales-excel" label="Ventes en Excel (.xlsx)" />
-      <Btn kind="sales-pdf" label="Ventes en PDF" />
+      <View style={s.buttons}>
+        {btn('sales-excel', 'Excel', 'grid-outline')}
+        {btn('sales-pdf', 'PDF', 'document-text-outline')}
+      </View>
 
-      <Text style={s.section}>Stock</Text>
-      <Text style={s.muted}>L'état du stock à ce jour, sans période.</Text>
-      <Btn kind="inventory-excel" label="Stock en Excel (.xlsx)" />
-      <Btn kind="inventory-pdf" label="Stock en PDF" />
+      <SectionHeader title="Stock" />
+      <Text style={s.caption}>État du stock à ce jour, sans période.</Text>
+      <View style={[s.buttons, s.top]}>
+        {btn('inventory-excel', 'Excel', 'grid-outline')}
+        {btn('inventory-pdf', 'PDF', 'document-text-outline')}
+      </View>
 
-      {error && <Text style={s.error}>{error}</Text>}
-    </ScrollView>
+      {error ? <Notice>{error}</Notice> : null}
+    </ScreenContainer>
   );
 }
 
 const s = StyleSheet.create({
-  container: { padding: spacing.lg, paddingTop: spacing.xl * 2,
-    backgroundColor: colors.background, flexGrow: 1 },
-  back: { color: colors.primary, fontWeight: '600', marginBottom: spacing.sm },
-  title: { fontSize: 28, fontWeight: '700', color: colors.primary },
-  muted: { color: colors.textMuted, marginTop: spacing.xs },
-  section: { fontSize: 18, fontWeight: '700', color: colors.text,
-    marginTop: spacing.lg, marginBottom: spacing.sm },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm,
-    marginBottom: spacing.sm },
-  chip: { borderWidth: 1, borderColor: colors.border, borderRadius: 16,
-    paddingHorizontal: spacing.md, minHeight: 36, justifyContent: 'center',
+  flex: { flex: 1 },
+  caption: { fontSize: 13, color: colors.textMuted },
+  top: { marginTop: spacing.sm },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm },
+  chip: { minHeight: 36, justifyContent: 'center', paddingHorizontal: spacing.md,
+    borderRadius: 18, borderWidth: 1, borderColor: colors.border,
     backgroundColor: colors.surface },
   chipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { color: colors.primary, fontWeight: '600' },
+  chipText: { fontSize: 13, fontWeight: '600', color: colors.text },
   chipTextOn: { color: '#FFFFFF' },
-  button: { backgroundColor: colors.primary, borderRadius: 8, padding: spacing.md,
-    minHeight: 48, alignItems: 'center', justifyContent: 'center',
-    marginTop: spacing.sm },
-  disabled: { opacity: 0.6 },
-  buttonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 },
-  error: { color: colors.danger, marginTop: spacing.lg },
+  buttons: { flexDirection: 'row', gap: spacing.sm },
 });

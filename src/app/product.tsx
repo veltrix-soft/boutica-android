@@ -1,71 +1,51 @@
-import {
-  View,
-  Text,
-  FlatList,
-  ActivityIndicator,
-  RefreshControl,
-  StyleSheet,
-} from 'react-native';
-import { Link, useLocalSearchParams } from 'expo-router';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import {
-  getProduct,
-  listVariants,
-  Variant,
-} from '../features/products/api';
+import { getProduct, listVariants, Variant } from '../features/products/api';
 import { userMessage } from '../api/errors';
 import { formatMoney } from '../lib/money';
-import { colors, spacing } from '../theme/colors';
+import {
+  Button, EmptyState, ErrorState, LoadingState, Notice, ScreenContainer,
+  ScreenHeader, SectionHeader, StatusBadge,
+} from '../components/ui';
+import { colors, radius, spacing } from '../theme/colors';
 
-function VariantCard({ v }: { v: Variant }) {
+function Metric({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <View style={s.metric}>
+      <Text style={s.caption}>{label}</Text>
+      <Text style={[s.metricValue, strong && s.metricStrong]} numberOfLines={1}>{value}</Text>
+    </View>
+  );
+}
+
+function VariantCard({ v, onAdjust }: { v: Variant; onAdjust: () => void }) {
   const attrs = Object.entries(v.attributes ?? {})
     .map(([k, val]) => `${k} : ${val}`)
     .join(' · ');
-
   return (
     <View style={s.card}>
-      <Text style={s.name}>{v.name}</Text>
-
-      <Text style={s.muted}>
-        SKU {v.sku}
-        <Link
-        href={{
-          pathname: '/stock-adjust',
-          params: { variantId: v.id, productId: v.productId, name: v.name },
-        }}
-        style={s.adjust}
-      >
-        Ajuster le stock ›
-      </Link>
-        {attrs ? ` · ${attrs}` : ''}
-      </Text>
-
-      <View style={s.row}>
-        <View>
-          <Text style={s.small}>Achat</Text>
-          <Text style={s.buy}>
-            {formatMoney(v.purchasePrice)}
-          </Text>
+      <View style={s.cardTop}>
+        <View style={s.flex}>
+          <Text style={s.name}>{v.name}</Text>
+          <Text style={s.caption}>SKU {v.sku}{attrs ? ` · ${attrs}` : ''}</Text>
         </View>
-
-        <View>
-          <Text style={s.small}>Vente</Text>
-          <Text style={s.sell}>
-            {formatMoney(v.sellingPrice)}
-          </Text>
-        </View>
-
-        <View>
-          <Text style={s.small}>Stock</Text>
-          <Text style={s.stock}>{v.quantity}</Text>
-        </View>
+        {v.quantity <= 0 ? <StatusBadge label="Rupture" tone="danger" /> : null}
       </View>
+      <View style={s.metrics}>
+        <Metric label="Achat" value={formatMoney(v.purchasePrice)} />
+        <Metric label="Vente" value={formatMoney(v.sellingPrice)} strong />
+        <Metric label="Stock" value={String(v.quantity)} />
+      </View>
+      <Button label="Ajuster le stock" variant="secondary" icon="swap-vertical-outline"
+        compact onPress={onAdjust} />
     </View>
   );
 }
 
 export default function ProductDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
 
   const product = useQuery({
     queryKey: ['product', id],
@@ -78,198 +58,100 @@ export default function ProductDetail() {
     queryFn: ({ pageParam }) => listVariants(id, pageParam),
     initialPageParam: 1,
     getNextPageParam: (last) =>
-      last.page * last.pageSize < last.total
-        ? last.page + 1
-        : undefined,
+      last.page * last.pageSize < last.total ? last.page + 1 : undefined,
     enabled: !!id,
   });
 
-  const items =
-    variants.data?.pages.flatMap((p) => p.data) ?? [];
-
+  const items = variants.data?.pages.flatMap((p) => p.data) ?? [];
   const total = variants.data?.pages[0]?.total ?? 0;
   const p = product.data;
   const error = product.error ?? variants.error;
+  const retry = () => { product.refetch(); variants.refetch(); };
 
   return (
-    <View style={s.container}>
-      <Link href="/products" style={s.back}>
-        ‹ Produits
-      </Link>
-
-      <FlatList
-        data={items}
-        keyExtractor={(v) => v.id}
-        refreshControl={
-          <RefreshControl
-            refreshing={
-              variants.isRefetching &&
-              !variants.isFetchingNextPage
-            }
-            onRefresh={() => {
-              product.refetch();
-              variants.refetch();
-            }}
-          />
-        }
-        onEndReached={() => {
-          if (
-            variants.hasNextPage &&
-            !variants.isFetchingNextPage
-          ) {
-            variants.fetchNextPage();
-          }
-        }}
-        onEndReachedThreshold={0.4}
-        ListHeaderComponent={
-          <View>
-            {product.isLoading && (
-              <ActivityIndicator color={colors.primary} />
-            )}
-
-            {p && (
-              <>
-                <Text style={s.title}>{p.name}</Text>
-
-                {(p.category || p.brand) && (
-                  <Text style={s.muted}>
-                    {[p.category, p.brand]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </Text>
-                )}
-
-                {p.description && (
-                  <Text style={s.desc}>{p.description}</Text>
-                )}
-              </>
-            )}
-
-            {error && (
-              <Text style={s.error}>
-                {userMessage(error)}
-              </Text>
-            )}
-
-            <Text style={s.section}>
-              Variantes ({total})
-            </Text>
-            <Link
-  href={{
-    pathname: '/variant-new',
-    params: { productId: id },
-  }}
-  style={s.add}
->
-  + Nouvelle variante
-</Link>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <VariantCard v={item} />
-        )}
-        ListEmptyComponent={
-          !variants.isLoading && !error ? (
-            <Text style={s.empty}>
-              Aucune variante. Il en faudra une pour pouvoir
-              vendre ce produit.
-            </Text>
-          ) : null
-        }
-        ListFooterComponent={
-          variants.isFetchingNextPage ? (
-            <ActivityIndicator color={colors.primary} />
-          ) : null
-        }
+    <ScreenContainer>
+      <ScreenHeader
+        title={p?.name ?? 'Produit'}
+        subtitle={p ? [p.category, p.brand].filter(Boolean).join(' · ') || undefined : undefined}
       />
-    </View>
+      {product.isLoading ? (
+        <LoadingState />
+      ) : error && !p ? (
+        <ErrorState message={userMessage(error)} onRetry={retry} />
+      ) : (
+        <FlatList
+          data={items}
+          keyExtractor={(v) => v.id}
+          contentContainerStyle={s.list}
+          ItemSeparatorComponent={() => <View style={s.gap} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={variants.isRefetching && !variants.isFetchingNextPage}
+              onRefresh={retry}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
+          onEndReached={() => {
+            if (variants.hasNextPage && !variants.isFetchingNextPage) variants.fetchNextPage();
+          }}
+          onEndReachedThreshold={0.4}
+          ListHeaderComponent={
+            <View>
+              {p?.description ? <Text style={s.desc}>{p.description}</Text> : null}
+              {error ? <Notice>{userMessage(error)}</Notice> : null}
+              <SectionHeader
+                title={`Variantes (${total})`}
+                actionLabel="+ Nouvelle variante"
+                onAction={() =>
+                  router.push({ pathname: '/variant-new', params: { productId: id } })
+                }
+              />
+            </View>
+          }
+          renderItem={({ item }) => (
+            <VariantCard
+              v={item}
+              onAdjust={() =>
+                router.push({
+                  pathname: '/stock-adjust',
+                  params: { variantId: item.id, productId: item.productId, name: item.name },
+                })
+              }
+            />
+          )}
+          ListEmptyComponent={
+            variants.isLoading ? <LoadingState compact /> : (
+              <EmptyState
+                icon="pricetag-outline"
+                title="Aucune variante"
+                message="Il en faudra une pour pouvoir vendre ce produit."
+                actionLabel="Ajouter une variante"
+                onAction={() =>
+                  router.push({ pathname: '/variant-new', params: { productId: id } })
+                }
+              />
+            )
+          }
+          ListFooterComponent={variants.isFetchingNextPage ? <LoadingState compact /> : null}
+        />
+      )}
+    </ScreenContainer>
   );
 }
 
 const s = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: spacing.lg,
-    paddingTop: spacing.xl * 2,
-    backgroundColor: colors.background,
-  },
-  back: {
-    color: colors.primary,
-    fontWeight: '600',
-    marginBottom: spacing.sm,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  muted: {
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  desc: {
-    color: colors.text,
-    marginTop: spacing.sm,
-  },
-  section: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: spacing.lg,
-  },
-  error: {
-    color: colors.danger,
-    marginTop: spacing.md,
-  },
-  add: {
-  color: colors.primary,
-  fontWeight: '700',
-  marginTop: spacing.sm,
-},
-  empty: {
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.lg,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.md,
-    marginTop: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  name: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: spacing.md,
-  },
-  small: {
-    color: colors.textMuted,
-    fontSize: 12,
-  },
-  buy: {
-    color: colors.textMuted,
-    fontSize: 16,
-  },
-  sell: {
-    color: colors.primary,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  stock: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  adjust: {
-  color: colors.primary,
-  fontWeight: '700',
-  marginTop: spacing.sm,
-},
+  flex: { flex: 1 },
+  list: { paddingBottom: spacing.lg },
+  gap: { height: spacing.sm },
+  desc: { fontSize: 14, color: colors.text, marginBottom: spacing.xs },
+  caption: { fontSize: 12, color: colors.textMuted },
+  card: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1,
+    borderColor: colors.border, padding: spacing.md, gap: spacing.sm },
+  cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  name: { fontSize: 16, fontWeight: '600', color: colors.text },
+  metrics: { flexDirection: 'row', gap: spacing.sm },
+  metric: { flex: 1 },
+  metricValue: { fontSize: 15, fontWeight: '600', color: colors.textMuted, marginTop: 2 },
+  metricStrong: { color: colors.text },
 });
