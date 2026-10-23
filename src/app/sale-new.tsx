@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, ActivityIndicator, ScrollView, Alert,
-  KeyboardAvoidingView, Platform, StyleSheet,
+  Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 import Decimal from 'decimal.js';
 import { Variant } from '../features/products/api';
 import { Customer, listCustomerOptions } from '../features/customers/api';
@@ -12,11 +13,17 @@ import { createSale, searchVariants, SaleInput } from '../features/sales/api';
 import { ApiError, userMessage } from '../api/errors';
 import { formatMoney, parseAmount } from '../lib/money';
 import { newIdempotencyKey } from '../lib/idempotency';
-import { colors, spacing } from '../theme/colors';
+import {
+  Button, FormField, ListItem, LoadingState, Notice, ScreenContainer,
+  ScreenHeader, SearchField, SectionHeader, StatusBadge,
+} from '../components/ui';
+import { colors, radius, spacing } from '../theme/colors';
 
 type CartLine = { variant: Variant; quantity: number };
 
 export default function NewSale() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -51,6 +58,12 @@ export default function NewSale() {
   );
   const discount = discountText.trim() ? parseAmount(discountText) : new Decimal(0);
   const total = discount ? subtotal.minus(discount) : subtotal;
+  const discountError =
+    discountText.trim() && !discount
+      ? 'Montant invalide (ex. 500 ou 500,50).'
+      : discount && discount.greaterThan(subtotal)
+        ? 'La remise ne peut pas dépasser le sous-total.'
+        : null;
 
   const m = useMutation({
     mutationFn: ({ payload, key }: { payload: SaleInput; key: string }) =>
@@ -66,7 +79,13 @@ export default function NewSale() {
         qc.invalidateQueries({ queryKey: ['dashboard'] }),
         qc.invalidateQueries({ queryKey: ['sales'] }),
       ]);
-      Alert.alert('Vente enregistrée', `Total : ${formatMoney(sale.total)}`);
+      Alert.alert('Vente enregistrée', `Total : ${formatMoney(sale.total)}`, [
+        { text: 'Nouvelle vente', style: 'cancel' },
+        {
+          text: 'Voir le reçu',
+          onPress: () => router.push({ pathname: '/sale', params: { id: sale.id } }),
+        },
+      ]);
     },
     onError: (e) => {
       if (e instanceof ApiError) {
@@ -138,156 +157,200 @@ export default function NewSale() {
   }
 
   const found = results.data?.data ?? [];
+  const showResults = debounced.length > 0 || cart.length === 0;
 
   return (
     <KeyboardAvoidingView
       style={s.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={s.container} keyboardShouldPersistTaps="handled">
-        <Link href="/" style={s.back}>‹ Retour</Link>
-        <Text style={s.title}>Nouvelle vente</Text>
+      <ScreenContainer scroll bottomInset={false}>
+        <ScreenHeader title="Nouvelle vente" />
+        <SearchField value={search} onChangeText={setSearch}
+          placeholder="Rechercher un article (nom ou SKU)" />
 
-        <TextInput
-          style={s.input}
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Rechercher un article (nom ou SKU)"
-          autoCorrect={false}
-        />
-        {results.isLoading && <ActivityIndicator color={colors.primary} />}
-        {results.error && <Text style={s.error}>{userMessage(results.error)}</Text>}
-        {!results.isLoading && !results.error && found.length === 0 && (
-          <Text style={s.muted}>Aucun article trouvé.</Text>
-        )}
-        {found.map((v) => (
-          <Pressable
-            key={v.id}
-            style={[s.result, v.quantity <= 0 && s.disabled]}
-            onPress={() => add(v)}
-            disabled={v.quantity <= 0}
-            accessibilityRole="button"
-          >
-            <View style={s.flex}>
-              <Text style={s.name}>{v.name}</Text>
-              <Text style={s.muted}>SKU {v.sku} · {v.quantity > 0 ? `Stock ${v.quantity}` : 'Rupture'}</Text>
-            </View>
-            <Text style={s.sell}>{formatMoney(v.sellingPrice)}</Text>
-          </Pressable>
-        ))}
-
-        <Text style={s.section}>Panier ({cart.length})</Text>
-        {cart.length === 0 && <Text style={s.muted}>Touchez un article pour l'ajouter.</Text>}
-        {cart.map((l) => (
-          <View key={l.variant.id} style={s.line}>
-            <View style={s.flex}>
-              <Text style={s.name}>{l.variant.name}</Text>
-              <Text style={s.muted}>
-                {formatMoney(l.variant.sellingPrice)} × {l.quantity} ={' '}
-                {formatMoney(new Decimal(l.variant.sellingPrice).times(l.quantity).toFixed(2))}
-              </Text>
-            </View>
-            <Pressable style={s.qtyBtn} onPress={() => change(l.variant.id, -1)}
-              accessibilityLabel="Retirer un" accessibilityRole="button">
-              <Text style={s.qtyText}>−</Text>
-            </Pressable>
-            <Text style={s.qty}>{l.quantity}</Text>
-            <Pressable style={s.qtyBtn} onPress={() => change(l.variant.id, 1)}
-              accessibilityLabel="Ajouter un" accessibilityRole="button">
-              <Text style={s.qtyText}>+</Text>
-            </Pressable>
-          </View>
-        ))}
-
-        <Text style={s.label}>Client (facultatif)</Text>
-        <Pressable style={s.pick} onPress={() => setPickerOpen((o) => !o)}
-          accessibilityRole="button">
-          <Text style={customer ? s.name : s.muted}>
-            {customer ? customer.name : 'Aucun client — toucher pour choisir'}
-          </Text>
-        </Pressable>
-        {customer && (
-          <Pressable onPress={() => setCustomer(null)} accessibilityRole="button">
-            <Text style={s.link}>Retirer le client</Text>
-          </Pressable>
-        )}
-        {pickerOpen && (
-          <View style={s.picker}>
-            {customers.isLoading && <ActivityIndicator color={colors.primary} />}
-            {customers.error && <Text style={s.error}>{userMessage(customers.error)}</Text>}
-            {customers.data && customers.data.data.length === 0 && (
-              <Text style={s.muted}>Aucun client. Créez-en un depuis l'accueil (Clients).</Text>
+        {showResults ? (
+          <>
+            <SectionHeader title="Articles" />
+            {results.isLoading ? (
+              <LoadingState compact />
+            ) : results.error ? (
+              <Notice>{userMessage(results.error)}</Notice>
+            ) : found.length === 0 ? (
+              <Text style={s.empty}>Aucun article trouvé.</Text>
+            ) : (
+              <View style={s.list}>
+                {found.map((v) => (
+                  <ListItem
+                    key={v.id}
+                    icon="cube-outline"
+                    title={v.name}
+                    subtitle={`SKU ${v.sku} · ${v.quantity > 0 ? `Stock ${v.quantity}` : 'Rupture'}`}
+                    meta={formatMoney(v.sellingPrice)}
+                    badge={v.quantity <= 0 ? <StatusBadge label="Rupture" tone="danger" /> : undefined}
+                    onPress={v.quantity > 0 ? () => add(v) : undefined}
+                  />
+                ))}
+              </View>
             )}
+          </>
+        ) : (
+          <Text style={s.hint}>Recherchez un nom ou un SKU pour ajouter un article.</Text>
+        )}
+
+        <SectionHeader title={`Panier (${cart.length})`} />
+        {cart.length === 0 ? (
+          <Text style={s.empty}>Touchez un article pour l'ajouter.</Text>
+        ) : (
+          <View style={s.list}>
+            {cart.map((l) => {
+              const lineTotal = new Decimal(l.variant.sellingPrice).times(l.quantity);
+              return (
+                <View key={l.variant.id} style={s.line}>
+                  <View style={s.lineTop}>
+                    <View style={s.flex}>
+                      <Text style={s.lineName} numberOfLines={2}>{l.variant.name}</Text>
+                      <Text style={s.caption}>
+                        {formatMoney(l.variant.sellingPrice)} · stock {l.variant.quantity}
+                      </Text>
+                    </View>
+                    <Text style={s.lineTotal}>{formatMoney(lineTotal.toFixed(2))}</Text>
+                  </View>
+                  <View style={s.lineBottom}>
+                    <Pressable
+                      onPress={() => change(l.variant.id, -l.quantity)}
+                      hitSlop={8}
+                      style={s.trash}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Retirer ${l.variant.name} du panier`}
+                    >
+                      <Ionicons name="trash-outline" size={20} color={colors.textMuted} />
+                    </Pressable>
+                    <View style={s.stepper}>
+                      <Pressable
+                        style={s.stepBtn}
+                        onPress={() => change(l.variant.id, -1)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Retirer un"
+                      >
+                        <Ionicons name="remove" size={20} color={colors.text} />
+                      </Pressable>
+                      <Text style={s.qty}>{l.quantity}</Text>
+                      <Pressable
+                        style={[s.stepBtn, l.quantity >= l.variant.quantity && s.stepDisabled]}
+                        onPress={() => change(l.variant.id, 1)}
+                        disabled={l.quantity >= l.variant.quantity}
+                        accessibilityRole="button"
+                        accessibilityLabel="Ajouter un"
+                      >
+                        <Ionicons name="add" size={20} color={colors.text} />
+                      </Pressable>
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        <SectionHeader title="Client" />
+        {customer ? (
+          <>
+            <ListItem icon="person-outline" title={customer.name} subtitle={customer.phone} />
+            <View style={s.inlineButtons}>
+              <Button label="Changer" variant="secondary" compact fullWidth={false}
+                onPress={() => setPickerOpen((o) => !o)} />
+              <Button label="Retirer" variant="ghost" compact fullWidth={false}
+                onPress={() => setCustomer(null)} />
+            </View>
+          </>
+        ) : (
+          <Button label="Choisir un client (facultatif)" variant="secondary"
+            icon="person-add-outline" onPress={() => setPickerOpen((o) => !o)} />
+        )}
+        {pickerOpen ? (
+          <View style={[s.list, s.picker]}>
+            {customers.isLoading ? <LoadingState compact /> : null}
+            {customers.error ? <Notice>{userMessage(customers.error)}</Notice> : null}
+            {customers.data && customers.data.data.length === 0 ? (
+              <Text style={s.empty}>Aucun client. Créez-en un depuis « Plus », puis Clients.</Text>
+            ) : null}
             {customers.data?.data.map((c) => (
-              <Pressable key={c.id} style={s.option}
+              <ListItem
+                key={c.id}
+                icon="person-outline"
+                title={c.name}
+                subtitle={c.phone}
                 onPress={() => { setCustomer(c); setPickerOpen(false); }}
-                accessibilityRole="button">
-                <Text style={s.name}>{c.name}</Text>
-                {c.phone && <Text style={s.muted}>{c.phone}</Text>}
-              </Pressable>
+              />
             ))}
           </View>
-        )}
+        ) : null}
 
-        <Text style={s.label}>Remise (facultatif)</Text>
-        <TextInput style={s.input} value={discountText} onChangeText={setDiscountText}
-          keyboardType="decimal-pad" editable={!m.isPending} />
-
-        <View style={s.totals}>
-          <Text style={s.muted}>Sous-total estimé : {formatMoney(subtotal.toFixed(2))}</Text>
-          <Text style={s.totalText}>Total estimé : {formatMoney(total.toFixed(2))}</Text>
-          <Text style={s.small}>Le total définitif est calculé par le serveur d'après le catalogue.</Text>
+        <View style={s.discount}>
+          <FormField
+            label="Remise (facultatif)"
+            value={discountText}
+            onChangeText={setDiscountText}
+            keyboardType="decimal-pad"
+            editable={!m.isPending}
+            error={discountError}
+          />
         </View>
+      </ScreenContainer>
 
-        {error && <Text style={s.error}>{error}</Text>}
-
-        <Pressable style={[s.button, m.isPending && s.disabled]} onPress={submit}
-          disabled={m.isPending} accessibilityRole="button">
-          {m.isPending ? <ActivityIndicator color="#FFFFFF" />
-            : <Text style={s.buttonText}>Valider la vente</Text>}
-        </Pressable>
-      </ScrollView>
+      <View style={[s.footer, { paddingBottom: insets.bottom + spacing.sm }]}>
+        {error ? <Notice>{error}</Notice> : null}
+        <View style={s.totalRow}>
+          <View style={s.flex}>
+            <Text style={s.caption}>Total estimé</Text>
+            {discount && discount.greaterThan(0) ? (
+              <Text style={s.caption}>
+                Sous-total {formatMoney(subtotal.toFixed(2))} − remise {formatMoney(discount.toFixed(2))}
+              </Text>
+            ) : null}
+          </View>
+          <Text style={s.totalValue}>{formatMoney(total.toFixed(2))}</Text>
+        </View>
+        <Text style={s.hintSmall}>Le total définitif est calculé par le serveur.</Text>
+        <Button
+          label="Valider la vente"
+          icon="checkmark"
+          onPress={submit}
+          loading={m.isPending}
+          disabled={cart.length === 0}
+        />
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
 const s = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
-  container: { padding: spacing.lg, paddingTop: spacing.xl * 2 },
-  back: { color: colors.primary, fontWeight: '600', marginBottom: spacing.sm },
-  title: { fontSize: 28, fontWeight: '700', color: colors.primary, marginBottom: spacing.md },
-  section: { fontSize: 18, fontWeight: '700', color: colors.text, marginTop: spacing.lg },
-  label: { color: colors.text, fontWeight: '600', marginTop: spacing.md, marginBottom: spacing.xs },
-  input: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 8, padding: spacing.md, marginBottom: spacing.sm,
-    color: colors.text, fontSize: 16 },
-  muted: { color: colors.textMuted },
-  small: { color: colors.textMuted, fontSize: 12, marginTop: spacing.xs },
-  link: { color: colors.primary, fontWeight: '600', marginBottom: spacing.sm },
-  name: { color: colors.text, fontSize: 16, fontWeight: '600' },
-  sell: { color: colors.primary, fontSize: 16, fontWeight: '700' },
-  result: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
-    borderRadius: 12, padding: spacing.md, marginBottom: spacing.sm,
-    borderWidth: 1, borderColor: colors.border, minHeight: 56 },
-  line: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
-    borderRadius: 12, padding: spacing.md, marginTop: spacing.sm,
-    borderWidth: 1, borderColor: colors.border },
-  pick: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 8, padding: spacing.md, marginBottom: spacing.sm, minHeight: 48,
-    justifyContent: 'center' },
-  picker: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 8, marginBottom: spacing.sm },
-  option: { padding: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border, minHeight: 48, justifyContent: 'center' },
-  qtyBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.background,
-    borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  qtyText: { fontSize: 22, color: colors.primary, fontWeight: '700' },
-  qty: { minWidth: 32, textAlign: 'center', fontSize: 16, fontWeight: '700', color: colors.text },
-  totals: { marginTop: spacing.md, marginBottom: spacing.md },
-  totalText: { fontSize: 22, fontWeight: '700', color: colors.text, marginTop: spacing.xs },
-  error: { color: colors.danger, marginBottom: spacing.md },
-  button: { backgroundColor: colors.primary, borderRadius: 8, padding: spacing.md,
-    minHeight: 52, alignItems: 'center', justifyContent: 'center' },
-  disabled: { opacity: 0.5 },
-  buttonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 17 },
+  list: { gap: spacing.sm },
+  empty: { fontSize: 14, color: colors.textMuted },
+  hint: { fontSize: 13, color: colors.textMuted, marginTop: spacing.md },
+  hintSmall: { fontSize: 12, color: colors.textMuted, marginBottom: spacing.sm },
+  caption: { fontSize: 13, color: colors.textMuted },
+  line: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1,
+    borderColor: colors.border, padding: spacing.md },
+  lineTop: { flexDirection: 'row', gap: spacing.sm },
+  lineName: { fontSize: 15, fontWeight: '600', color: colors.text },
+  lineTotal: { fontSize: 15, fontWeight: '600', color: colors.text },
+  lineBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginTop: spacing.sm },
+  trash: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  stepBtn: { width: 44, height: 44, borderRadius: radius.md, borderWidth: 1,
+    borderColor: colors.border, backgroundColor: colors.surfaceMuted,
+    alignItems: 'center', justifyContent: 'center' },
+  stepDisabled: { opacity: 0.4 },
+  qty: { minWidth: 32, textAlign: 'center', fontSize: 17, fontWeight: '700', color: colors.text },
+  inlineButtons: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  picker: { marginTop: spacing.sm },
+  discount: { marginTop: spacing.md },
+  footer: { backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border,
+    paddingHorizontal: spacing.md, paddingTop: spacing.sm + 4 },
+  totalRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  totalValue: { fontSize: 24, fontWeight: '700', color: colors.text },
 });

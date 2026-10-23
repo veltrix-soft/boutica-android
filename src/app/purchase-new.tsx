@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, ActivityIndicator, ScrollView, Alert,
-  KeyboardAvoidingView, Platform, StyleSheet,
+  Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 import Decimal from 'decimal.js';
 import { Variant } from '../features/products/api';
 import { searchVariants } from '../features/sales/api';
@@ -13,7 +14,11 @@ import { receivePurchase, PurchaseInput } from '../features/purchases/api';
 import { ApiError, userMessage } from '../api/errors';
 import { formatMoney, parseAmount } from '../lib/money';
 import { newIdempotencyKey } from '../lib/idempotency';
-import { colors, spacing } from '../theme/colors';
+import {
+  Button, FormField, ListItem, LoadingState, Notice, ScreenContainer,
+  ScreenHeader, SearchField, SectionHeader,
+} from '../components/ui';
+import { colors, radius, spacing } from '../theme/colors';
 
 type Line = { variant: Variant; qty: string; price: string };
 
@@ -27,6 +32,8 @@ function lineTotal(l: Line): Decimal | null {
 }
 
 export default function NewPurchase() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -75,13 +82,20 @@ export default function NewPurchase() {
       Alert.alert(
         'Achat enregistré',
         `Total : ${formatMoney(purchase.total)}. Le stock a été mis à jour.`,
+        [
+          { text: 'Nouvel achat', style: 'cancel' },
+          {
+            text: 'Voir le reçu',
+            onPress: () => router.push({ pathname: '/purchase', params: { id: purchase.id } }),
+          },
+        ],
       );
     },
     onError: (e) => {
       if (e instanceof ApiError && (e.kind === 'network' || e.kind === 'timeout')) {
         setError(
           "Connexion perdue : l'achat a peut-être été enregistré. " +
-            'Appuyez de nouveau sur « Enregistrer l\'achat » : il ne sera pas enregistré en double.',
+            "Appuyez de nouveau sur « Enregistrer l'achat » : il ne sera pas enregistré en double.",
         );
         return;
       }
@@ -142,157 +156,172 @@ export default function NewPurchase() {
   }
 
   const found = results.data?.data ?? [];
+  const showResults = debounced.length > 0 || lines.length === 0;
 
   return (
     <KeyboardAvoidingView
       style={s.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={s.container} keyboardShouldPersistTaps="handled">
-        <Link href="/" style={s.back}>‹ Retour</Link>
-        <Text style={s.title}>Réception d'achat</Text>
+      <ScreenContainer scroll bottomInset={false}>
+        <ScreenHeader title="Réception d'achat" />
+        <SearchField value={search} onChangeText={setSearch}
+          placeholder="Rechercher un article (nom ou SKU)" />
 
-        <TextInput
-          style={s.input}
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Rechercher un article (nom ou SKU)"
-          autoCorrect={false}
-        />
-        {results.isLoading && <ActivityIndicator color={colors.primary} />}
-        {results.error && <Text style={s.error}>{userMessage(results.error)}</Text>}
-        {!results.isLoading && !results.error && found.length === 0 && (
-          <Text style={s.muted}>Aucun article trouvé.</Text>
-        )}
-        {found.map((v) => (
-          <Pressable key={v.id} style={s.result} onPress={() => add(v)}
-            accessibilityRole="button">
-            <View style={s.flex}>
-              <Text style={s.name}>{v.name}</Text>
-              <Text style={s.muted}>SKU {v.sku} · Stock {v.quantity}</Text>
-            </View>
-            <Text style={s.buy}>{formatMoney(v.purchasePrice)}</Text>
-          </Pressable>
-        ))}
-
-        <Text style={s.section}>Marchandise reçue ({lines.length})</Text>
-        {lines.length === 0 && <Text style={s.muted}>Touchez un article pour l'ajouter.</Text>}
-        {lines.map((l) => {
-          const t = lineTotal(l);
-          return (
-            <View key={l.variant.id} style={s.line}>
-              <Text style={s.name}>{l.variant.name}</Text>
-              <View style={s.row}>
-                <View style={s.field}>
-                  <Text style={s.small}>Quantité</Text>
-                  <TextInput style={s.smallInput} value={l.qty}
-                    onChangeText={(v) => update(l.variant.id, { qty: v })}
-                    keyboardType="number-pad" editable={!m.isPending} />
-                </View>
-                <View style={s.field}>
-                  <Text style={s.small}>Prix unitaire payé</Text>
-                  <TextInput style={s.smallInput} value={l.price}
-                    onChangeText={(v) => update(l.variant.id, { price: v })}
-                    keyboardType="decimal-pad" editable={!m.isPending} />
-                </View>
+        {showResults ? (
+          <>
+            <SectionHeader title="Articles" />
+            {results.isLoading ? (
+              <LoadingState compact />
+            ) : results.error ? (
+              <Notice>{userMessage(results.error)}</Notice>
+            ) : found.length === 0 ? (
+              <Text style={s.empty}>Aucun article trouvé.</Text>
+            ) : (
+              <View style={s.list}>
+                {found.map((v) => (
+                  <ListItem
+                    key={v.id}
+                    icon="cube-outline"
+                    title={v.name}
+                    subtitle={`SKU ${v.sku} · Stock ${v.quantity}`}
+                    meta={formatMoney(v.purchasePrice)}
+                    metaSub="dernier achat"
+                    onPress={() => add(v)}
+                  />
+                ))}
               </View>
-              <View style={s.row}>
-                <Text style={s.muted}>
-                  Sous-total : {t ? formatMoney(t.toFixed(2)) : '—'}
-                </Text>
-                <Pressable onPress={() => remove(l.variant.id)} accessibilityRole="button">
-                  <Text style={s.remove}>Retirer</Text>
-                </Pressable>
-              </View>
-            </View>
-          );
-        })}
-
-        <Text style={s.label}>Fournisseur (facultatif)</Text>
-        <Pressable style={s.pick} onPress={() => setPickerOpen((o) => !o)}
-          accessibilityRole="button">
-          <Text style={supplier ? s.name : s.muted}>
-            {supplier ? supplier.name : 'Aucun fournisseur — toucher pour choisir'}
-          </Text>
-        </Pressable>
-        {supplier && (
-          <Pressable onPress={() => setSupplier(null)} accessibilityRole="button">
-            <Text style={s.link}>Retirer le fournisseur</Text>
-          </Pressable>
-        )}
-        {pickerOpen && (
-          <View style={s.picker}>
-            {suppliers.isLoading && <ActivityIndicator color={colors.primary} />}
-            {suppliers.error && <Text style={s.error}>{userMessage(suppliers.error)}</Text>}
-            {suppliers.data && suppliers.data.data.length === 0 && (
-              <Text style={s.muted}>Aucun fournisseur. Créez-en un depuis l'accueil.</Text>
             )}
-            {suppliers.data?.data.map((x) => (
-              <Pressable key={x.id} style={s.option}
-                onPress={() => { setSupplier(x); setPickerOpen(false); }}
-                accessibilityRole="button">
-                <Text style={s.name}>{x.name}</Text>
-                {x.phone && <Text style={s.muted}>{x.phone}</Text>}
-              </Pressable>
-            ))}
+          </>
+        ) : (
+          <Text style={s.hint}>Recherchez un nom ou un SKU pour ajouter un article.</Text>
+        )}
+
+        <SectionHeader title={`Marchandise reçue (${lines.length})`} />
+        {lines.length === 0 ? (
+          <Text style={s.empty}>Touchez un article pour l'ajouter.</Text>
+        ) : (
+          <View style={s.list}>
+            {lines.map((l) => {
+              const t = lineTotal(l);
+              return (
+                <View key={l.variant.id} style={s.line}>
+                  <View style={s.lineTop}>
+                    <Text style={s.lineName} numberOfLines={2}>{l.variant.name}</Text>
+                    <Pressable
+                      onPress={() => remove(l.variant.id)}
+                      hitSlop={8}
+                      style={s.trash}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Retirer ${l.variant.name}`}
+                    >
+                      <Ionicons name="trash-outline" size={20} color={colors.textMuted} />
+                    </Pressable>
+                  </View>
+                  <View style={s.fields}>
+                    <View style={s.flexField}>
+                      <FormField
+                        label="Quantité"
+                        value={l.qty}
+                        onChangeText={(v) => update(l.variant.id, { qty: v })}
+                        keyboardType="number-pad"
+                        editable={!m.isPending}
+                        error={parseQty(l.qty) === null ? 'Entier ≥ 1' : null}
+                      />
+                    </View>
+                    <View style={s.flexField}>
+                      <FormField
+                        label="Prix unitaire payé"
+                        value={l.price}
+                        onChangeText={(v) => update(l.variant.id, { price: v })}
+                        keyboardType="decimal-pad"
+                        editable={!m.isPending}
+                        error={!parseAmount(l.price) ? 'Prix invalide' : null}
+                      />
+                    </View>
+                  </View>
+                  <Text style={s.caption}>
+                    Sous-total : {t ? formatMoney(t.toFixed(2)) : '—'}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
         )}
 
-        <View style={s.totals}>
-          <Text style={s.totalText}>Total estimé : {formatMoney(total.toFixed(2))}</Text>
-          <Text style={s.small}>Le total définitif est calculé par le serveur.</Text>
+        <SectionHeader title="Fournisseur" />
+        {supplier ? (
+          <>
+            <ListItem icon="business-outline" title={supplier.name} subtitle={supplier.phone} />
+            <View style={s.inlineButtons}>
+              <Button label="Changer" variant="secondary" compact fullWidth={false}
+                onPress={() => setPickerOpen((o) => !o)} />
+              <Button label="Retirer" variant="ghost" compact fullWidth={false}
+                onPress={() => setSupplier(null)} />
+            </View>
+          </>
+        ) : (
+          <Button label="Choisir un fournisseur (facultatif)" variant="secondary"
+            icon="business-outline" onPress={() => setPickerOpen((o) => !o)} />
+        )}
+        {pickerOpen ? (
+          <View style={[s.list, s.picker]}>
+            {suppliers.isLoading ? <LoadingState compact /> : null}
+            {suppliers.error ? <Notice>{userMessage(suppliers.error)}</Notice> : null}
+            {suppliers.data && suppliers.data.data.length === 0 ? (
+              <Text style={s.empty}>Aucun fournisseur. Créez-en un depuis « Plus », puis Fournisseurs.</Text>
+            ) : null}
+            {suppliers.data?.data.map((x) => (
+              <ListItem
+                key={x.id}
+                icon="business-outline"
+                title={x.name}
+                subtitle={x.phone}
+                onPress={() => { setSupplier(x); setPickerOpen(false); }}
+              />
+            ))}
+          </View>
+        ) : null}
+        <View style={s.bottomSpace} />
+      </ScreenContainer>
+
+      <View style={[s.footer, { paddingBottom: insets.bottom + spacing.sm }]}>
+        {error ? <Notice>{error}</Notice> : null}
+        <View style={s.totalRow}>
+          <Text style={[s.caption, s.flexText]}>Total de l'achat</Text>
+          <Text style={s.totalValue}>{formatMoney(total.toFixed(2))}</Text>
         </View>
-
-        {error && <Text style={s.error}>{error}</Text>}
-
-        <Pressable style={[s.button, m.isPending && s.disabled]} onPress={submit}
-          disabled={m.isPending} accessibilityRole="button">
-          {m.isPending ? <ActivityIndicator color="#FFFFFF" />
-            : <Text style={s.buttonText}>Enregistrer l'achat</Text>}
-        </Pressable>
-      </ScrollView>
+        <Button
+          label="Enregistrer l'achat"
+          icon="checkmark"
+          onPress={submit}
+          loading={m.isPending}
+          disabled={lines.length === 0}
+        />
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
 const s = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
-  container: { padding: spacing.lg, paddingTop: spacing.xl * 2 },
-  back: { color: colors.primary, fontWeight: '600', marginBottom: spacing.sm },
-  title: { fontSize: 28, fontWeight: '700', color: colors.primary, marginBottom: spacing.md },
-  section: { fontSize: 18, fontWeight: '700', color: colors.text, marginTop: spacing.lg },
-  label: { color: colors.text, fontWeight: '600', marginTop: spacing.md, marginBottom: spacing.xs },
-  input: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 8, padding: spacing.md, marginBottom: spacing.sm,
-    color: colors.text, fontSize: 16 },
-  muted: { color: colors.textMuted },
-  small: { color: colors.textMuted, fontSize: 12 },
-  link: { color: colors.primary, fontWeight: '600', marginBottom: spacing.sm },
-  remove: { color: colors.danger, fontWeight: '600' },
-  name: { color: colors.text, fontSize: 16, fontWeight: '600' },
-  buy: { color: colors.textMuted, fontSize: 16, fontWeight: '600' },
-  result: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
-    borderRadius: 12, padding: spacing.md, marginBottom: spacing.sm,
-    borderWidth: 1, borderColor: colors.border, minHeight: 56 },
-  line: { backgroundColor: colors.surface, borderRadius: 12, padding: spacing.md,
-    marginTop: spacing.sm, borderWidth: 1, borderColor: colors.border },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end',
-    marginTop: spacing.sm, gap: spacing.md },
-  field: { flex: 1 },
-  smallInput: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 8, padding: spacing.sm, color: colors.text, fontSize: 16, minHeight: 44 },
-  pick: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 8, padding: spacing.md, marginBottom: spacing.sm, minHeight: 48,
-    justifyContent: 'center' },
-  picker: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 8, marginBottom: spacing.sm },
-  option: { padding: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border, minHeight: 48, justifyContent: 'center' },
-  totals: { marginTop: spacing.md, marginBottom: spacing.md },
-  totalText: { fontSize: 22, fontWeight: '700', color: colors.text },
-  error: { color: colors.danger, marginBottom: spacing.md },
-  button: { backgroundColor: colors.primary, borderRadius: 8, padding: spacing.md,
-    minHeight: 52, alignItems: 'center', justifyContent: 'center' },
-  disabled: { opacity: 0.5 },
-  buttonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 17 },
+  flexText: { flex: 1 },
+  flexField: { flex: 1 },
+  list: { gap: spacing.sm },
+  empty: { fontSize: 14, color: colors.textMuted },
+  hint: { fontSize: 13, color: colors.textMuted, marginTop: spacing.md },
+  caption: { fontSize: 13, color: colors.textMuted },
+  line: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1,
+    borderColor: colors.border, padding: spacing.md },
+  lineTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  lineName: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.text },
+  trash: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  fields: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  inlineButtons: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  picker: { marginTop: spacing.sm },
+  bottomSpace: { height: spacing.md },
+  footer: { backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border,
+    paddingHorizontal: spacing.md, paddingTop: spacing.sm + 4 },
+  totalRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
+  totalValue: { fontSize: 24, fontWeight: '700', color: colors.text },
 });

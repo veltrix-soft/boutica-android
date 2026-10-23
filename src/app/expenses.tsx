@@ -1,15 +1,18 @@
-import {
-  View, Text, FlatList, ActivityIndicator, RefreshControl, StyleSheet,
-} from 'react-native';
-import { Link } from 'expo-router';
+import { FlatList, RefreshControl, View, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { listExpenses } from '../features/expenses/api';
 import { userMessage } from '../api/errors';
 import { formatMoney } from '../lib/money';
 import { formatDateTime } from '../lib/format';
+import {
+  Button, EmptyState, ErrorState, ListItem, LoadingState, Notice,
+  ScreenContainer, ScreenHeader,
+} from '../components/ui';
 import { colors, spacing } from '../theme/colors';
 
 export default function ExpensesScreen() {
+  const router = useRouter();
   const q = useInfiniteQuery({
     queryKey: ['expenses'],
     queryFn: ({ pageParam }) => listExpenses(pageParam),
@@ -23,66 +26,72 @@ export default function ExpensesScreen() {
   const total = q.data?.pages[0]?.total ?? 0;
 
   return (
-    <View style={s.container}>
-      <Link href="/" style={s.back}>‹ Retour</Link>
-      <Text style={s.title}>Dépenses</Text>
-      <Link href="/expense-new" style={s.add}>+ Nouvelle dépense</Link>
-      {q.data && <Text style={s.muted}>{total} dépense(s)</Text>}
-
-      {q.isLoading && <ActivityIndicator color={colors.primary} style={s.gap} />}
-      {q.error && <Text style={s.error}>{userMessage(q.error)}</Text>}
-
-      <FlatList
-        data={items}
-        keyExtractor={(x) => x.id}
-        refreshControl={
-          <RefreshControl
-            refreshing={q.isRefetching && !q.isFetchingNextPage}
-            onRefresh={() => q.refetch()}
+    <ScreenContainer>
+      <ScreenHeader
+        title="Dépenses"
+        subtitle={q.data ? `${total} dépense(s)` : undefined}
+        right={
+          <Button
+            label="Ajouter"
+            icon="add"
+            compact
+            fullWidth={false}
+            onPress={() => router.push('/expense-new')}
           />
         }
-        onEndReached={() => {
-          if (q.hasNextPage && !q.isFetchingNextPage) q.fetchNextPage();
-        }}
-        onEndReachedThreshold={0.4}
-        renderItem={({ item }) => (
-          <View style={s.card}>
-            <View style={s.flex}>
-              <Text style={s.name}>{item.category}</Text>
-              {item.description && <Text style={s.muted}>{item.description}</Text>}
-              <Text style={s.small}>{formatDateTime(item.createdAt)}</Text>
-            </View>
-            <Text style={s.amount}>{formatMoney(item.amount)}</Text>
-          </View>
-        )}
-        ListEmptyComponent={
-          !q.isLoading && !q.error ? (
-            <Text style={s.empty}>Aucune dépense pour le moment.</Text>
-          ) : null
-        }
-        ListFooterComponent={
-          q.isFetchingNextPage ? <ActivityIndicator color={colors.primary} /> : null
-        }
       />
-    </View>
+
+      {q.isLoading ? (
+        <LoadingState />
+      ) : q.error && items.length === 0 ? (
+        <ErrorState message={userMessage(q.error)} onRetry={() => q.refetch()} />
+      ) : (
+        <FlatList
+          data={items}
+          keyExtractor={(x) => x.id}
+          contentContainerStyle={s.list}
+          ItemSeparatorComponent={() => <View style={s.gap} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={q.isRefetching && !q.isFetchingNextPage}
+              onRefresh={() => q.refetch()}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
+          onEndReached={() => {
+            if (q.hasNextPage && !q.isFetchingNextPage) q.fetchNextPage();
+          }}
+          onEndReachedThreshold={0.4}
+          ListHeaderComponent={
+            q.error ? <Notice>{userMessage(q.error)}</Notice> : null
+          }
+          renderItem={({ item }) => (
+            <ListItem
+              icon="receipt-outline"
+              title={item.category}
+              subtitle={item.description}
+              meta={formatMoney(item.amount)}
+              metaSub={formatDateTime(item.createdAt)}
+            />
+          )}
+          ListEmptyComponent={
+            <EmptyState
+              icon="receipt-outline"
+              title="Aucune dépense"
+              message="Ajoutez vos frais (loyer, transport, salaires…) pour suivre votre bénéfice."
+              actionLabel="Ajouter une dépense"
+              onAction={() => router.push('/expense-new')}
+            />
+          }
+          ListFooterComponent={q.isFetchingNextPage ? <LoadingState compact /> : null}
+        />
+      )}
+    </ScreenContainer>
   );
 }
 
 const s = StyleSheet.create({
-  flex: { flex: 1 },
-  container: { flex: 1, padding: spacing.lg, paddingTop: spacing.xl * 2,
-    backgroundColor: colors.background },
-  back: { color: colors.primary, fontWeight: '600', marginBottom: spacing.sm },
-  title: { fontSize: 28, fontWeight: '700', color: colors.primary },
-  add: { color: colors.primary, fontWeight: '700', marginVertical: spacing.sm },
-  muted: { color: colors.textMuted },
-  small: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-  gap: { marginTop: spacing.lg },
-  error: { color: colors.danger, marginTop: spacing.md, textAlign: 'center' },
-  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
-    borderRadius: 12, padding: spacing.md, marginTop: spacing.sm,
-    borderWidth: 1, borderColor: colors.border },
-  name: { color: colors.text, fontSize: 16, fontWeight: '600' },
-  amount: { color: colors.danger, fontSize: 17, fontWeight: '700' },
-  empty: { color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl },
+  list: { paddingBottom: spacing.lg },
+  gap: { height: spacing.sm },
 });

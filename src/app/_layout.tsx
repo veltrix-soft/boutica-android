@@ -35,14 +35,11 @@ function RootNavigator() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={signedIn}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="products" />
         <Stack.Screen name="product-new" />
         <Stack.Screen name="product" />
         <Stack.Screen name="variant-new" />
         <Stack.Screen name="stock-adjust" />
         <Stack.Screen name="sale-new" />
-        <Stack.Screen name="sales" />
         <Stack.Screen name="sale" />
                 <Stack.Screen name="customers" />
         <Stack.Screen name="customer-new" />
@@ -50,7 +47,7 @@ function RootNavigator() {
                         <Stack.Screen name="suppliers" />
         <Stack.Screen name="supplier-new" />
                 <Stack.Screen name="purchase-new" />
-                        <Stack.Screen name="purchases" />
+                <Stack.Screen name="(tabs)" />
         <Stack.Screen name="purchase" />
                 <Stack.Screen name="expenses" />
         <Stack.Screen name="expense-new" />

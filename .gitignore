@@ -41,3 +41,12 @@ example
 # generated native folders
 /ios
 /android
+
+# Dépendances et fichiers temporaires
+node_modules/
+.expo/
+
+# Fichiers contenant des variables d'environnement et secrets
+.env
+.env.*
+!.env.example
