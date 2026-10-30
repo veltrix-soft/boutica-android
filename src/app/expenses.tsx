@@ -54,7 +54,9 @@ export default function ExpensesScreen() {
           refreshControl={
             <RefreshControl
               refreshing={q.isRefetching && !q.isFetchingNextPage}
-              onRefresh={() => q.refetch()}
+              onRefresh={async () => {
+                await q.refetch();
+              }}
               colors={[colors.primary]}
               tintColor={colors.primary}
             />
@@ -64,7 +66,7 @@ export default function ExpensesScreen() {
           }}
           onEndReachedThreshold={0.4}
           ListHeaderComponent={
-            q.error ? <Notice>{userMessage(q.error)}</Notice> : null
+            q.error ? <Notice>{userMessage(q.error)}</Notice> : undefined
           }
           renderItem={({ item }) => (
             <ListItem
@@ -84,7 +86,7 @@ export default function ExpensesScreen() {
               onAction={() => router.push('/expense-new')}
             />
           }
-          ListFooterComponent={q.isFetchingNextPage ? <LoadingState compact /> : null}
+          ListFooterComponent={q.isFetchingNextPage ? <LoadingState compact /> : undefined}
         />
       )}
     </ScreenContainer>

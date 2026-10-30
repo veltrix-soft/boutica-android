@@ -97,7 +97,9 @@ export default function ProductsScreen() {
           refreshControl={
             <RefreshControl
               refreshing={q.isRefetching && !q.isFetchingNextPage}
-              onRefresh={() => q.refetch()}
+              onRefresh={async () => {
+                await q.refetch();
+              }}
               colors={[colors.primary]}
               tintColor={colors.primary}
             />
@@ -106,7 +108,7 @@ export default function ProductsScreen() {
             if (q.hasNextPage && !q.isFetchingNextPage) q.fetchNextPage();
           }}
           onEndReachedThreshold={0.4}
-          ListHeaderComponent={q.error ? <Notice>{userMessage(q.error)}</Notice> : null}
+          ListHeaderComponent={q.error ? <Notice>{userMessage(q.error)}</Notice> : undefined}
           renderItem={({ item }) => (
             <ListItem
               icon="cube-outline"
@@ -124,7 +126,7 @@ export default function ProductsScreen() {
               onAction={() => router.push('/product-new')}
             />
           }
-          ListFooterComponent={q.isFetchingNextPage ? <LoadingState compact /> : null}
+          ListFooterComponent={q.isFetchingNextPage ? <LoadingState compact /> : undefined}
         />
       )}
     </ScreenContainer>

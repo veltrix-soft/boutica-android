@@ -46,7 +46,9 @@ export default function CustomersScreen() {
           refreshControl={
             <RefreshControl
               refreshing={q.isRefetching && !q.isFetchingNextPage}
-              onRefresh={() => q.refetch()}
+              onRefresh={async () => {
+                await q.refetch();
+              }}
               colors={[colors.primary]}
               tintColor={colors.primary}
             />
@@ -55,7 +57,7 @@ export default function CustomersScreen() {
             if (q.hasNextPage && !q.isFetchingNextPage) q.fetchNextPage();
           }}
           onEndReachedThreshold={0.4}
-          ListHeaderComponent={q.error ? <Notice>{userMessage(q.error)}</Notice> : null}
+          ListHeaderComponent={q.error ? <Notice>{userMessage(q.error)}</Notice> : undefined}
           renderItem={({ item }) => (
             <ListItem
               icon="person-outline"
@@ -73,7 +75,7 @@ export default function CustomersScreen() {
               onAction={() => router.push('/customer-new')}
             />
           }
-          ListFooterComponent={q.isFetchingNextPage ? <LoadingState compact /> : null}
+          ListFooterComponent={q.isFetchingNextPage ? <LoadingState compact /> : undefined}
         />
       )}
     </ScreenContainer>

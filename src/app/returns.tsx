@@ -44,7 +44,9 @@ export default function ReturnsScreen() {
           refreshControl={
             <RefreshControl
               refreshing={q.isRefetching && !q.isFetchingNextPage}
-              onRefresh={() => q.refetch()}
+              onRefresh={async () => {
+                await q.refetch();
+              }}
               colors={[colors.primary]}
               tintColor={colors.primary}
             />
@@ -70,7 +72,7 @@ export default function ReturnsScreen() {
           ListEmptyComponent={
             <EmptyState icon="arrow-undo-outline" title="Aucun retour pour le moment" />
           }
-          ListFooterComponent={q.isFetchingNextPage ? <LoadingState compact /> : null}
+          ListFooterComponent={q.isFetchingNextPage ? <LoadingState compact /> : undefined}
         />
       )}
     </ScreenContainer>

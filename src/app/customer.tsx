@@ -100,7 +100,7 @@ export default function CustomerDetail() {
               <EmptyState icon="receipt-outline" title="Aucune vente pour ce client" />
             )
           }
-          ListFooterComponent={history.isFetchingNextPage ? <LoadingState compact /> : null}
+          ListFooterComponent={history.isFetchingNextPage ? <LoadingState compact /> : undefined}
         />
       )}
     </ScreenContainer>

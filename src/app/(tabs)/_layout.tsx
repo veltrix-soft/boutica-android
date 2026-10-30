@@ -5,9 +5,17 @@ import { colors } from '../../theme/colors';
 import type { IconName } from '../../components/ui';
 
 function icon(name: IconName, focusedName: IconName) {
-  return ({ color, focused }: { color: ColorValue; focused: boolean }) => (
-    <Ionicons name={focused ? focusedName : name} size={22} color={color} />
-  );
+  return function TabIcon({ color, focused }: { color: ColorValue; focused: boolean }) {
+    const iconColor = typeof color === 'number' ? colors.textMuted : color ?? colors.textMuted;
+
+    return (
+      <Ionicons
+        name={focused ? focusedName : name}
+        size={22}
+        color={iconColor}
+      />
+    );
+  };
 }
 
 export default function TabsLayout() {

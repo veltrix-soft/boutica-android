@@ -53,7 +53,9 @@ export default function Home() {
       refreshControl={
         <RefreshControl
           refreshing={dash.isRefetching}
-          onRefresh={() => dash.refetch()}
+          onRefresh={async () => {
+            await dash.refetch();
+          }}
           colors={[colors.primary]}
           tintColor={colors.primary}
         />

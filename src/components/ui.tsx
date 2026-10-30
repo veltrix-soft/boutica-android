@@ -1,4 +1,4 @@
-import { ComponentProps, ReactElement, ReactNode } from 'react';
+import { ComponentProps, ReactElement, ReactNode, useState } from 'react';
 import {
   ActivityIndicator, Alert, Pressable, RefreshControlProps, ScrollView,
   StyleProp, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle,
@@ -312,15 +312,45 @@ export function SearchField({
 export function FormField({
   label, error, hint, required, style, ...input
 }: { label: string; error?: string | null; hint?: string; required?: boolean } & TextInputProps) {
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const isPassword = Boolean(input.secureTextEntry);
+
   return (
     <View style={s.field}>
       <Text style={s.fieldLabel}>{label}{required ? ' *' : ''}</Text>
-      <TextInput
-        {...input}
-        placeholderTextColor={colors.textMuted}
-        accessibilityLabel={label}
-        style={[s.input, input.multiline && s.inputMulti, error ? s.inputError : null, style]}
-      />
+      {isPassword ? (
+        <View style={[s.passwordInput, error ? s.inputError : null]}>
+          <TextInput
+            {...input}
+            secureTextEntry={!passwordVisible}
+            placeholderTextColor={colors.textMuted}
+            accessibilityLabel={label}
+            style={[s.passwordTextInput, input.multiline && s.inputMulti, style]}
+          />
+          <Pressable
+            onPress={() => setPasswordVisible((visible) => !visible)}
+            disabled={input.editable === false}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={passwordVisible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+            accessibilityState={{ disabled: input.editable === false }}
+            style={s.passwordVisibilityButton}
+          >
+            <Ionicons
+              name={passwordVisible ? 'eye-off-outline' : 'eye-outline'}
+              size={20}
+              color={colors.textMuted}
+            />
+          </Pressable>
+        </View>
+      ) : (
+        <TextInput
+          {...input}
+          placeholderTextColor={colors.textMuted}
+          accessibilityLabel={label}
+          style={[s.input, input.multiline && s.inputMulti, error ? s.inputError : null, style]}
+        />
+      )}
       {error ? (
         <Text style={s.fieldError}>{error}</Text>
       ) : hint ? (
@@ -467,6 +497,11 @@ const s = StyleSheet.create({
 
   field: { marginBottom: spacing.md },
   fieldLabel: { ...typography.label, color: colors.textMuted, marginBottom: spacing.xs + 2 },
+  passwordInput: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, minHeight: 48 },
+  passwordTextInput: { ...typography.body, color: colors.text, flex: 1,
+    paddingLeft: spacing.md - 2, paddingRight: spacing.sm, paddingVertical: spacing.sm + 4 },
+  passwordVisibilityButton: { width: 44, minHeight: 46, alignItems: 'center', justifyContent: 'center' },
   input: { ...typography.body, color: colors.text, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, borderRadius: radius.md,
     paddingHorizontal: spacing.md - 2, paddingVertical: spacing.sm + 4, minHeight: 48 },

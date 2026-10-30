@@ -3,6 +3,7 @@ import {
   ReactNode,
 } from 'react';
 import { setUnauthorizedHandler } from '../api/client';
+import { signUp as signUpApi } from './authApi';
 import * as authApi from './authApi';
 import { clearToken, getToken } from './tokenStorage';
 
@@ -48,8 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = useCallback(
-    async (input: Parameters<typeof authApi.signUp>[0]) => {
-      const u = await authApi.signUp(input);
+    async (input: Parameters<typeof signUpApi>[0]) => {
+      const u = await signUpApi(input);
       setUser(u);
       setStatus('signedIn');
     },

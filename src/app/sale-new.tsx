@@ -200,7 +200,7 @@ export default function NewSale() {
 
         <SectionHeader title={`Panier (${cart.length})`} />
         {cart.length === 0 ? (
-          <Text style={s.empty}>Touchez un article pour l'ajouter.</Text>
+          <Text style={s.empty}>Touchez un article pour l&apos;ajouter.</Text>
         ) : (
           <View style={s.list}>
             {cart.map((l) => {

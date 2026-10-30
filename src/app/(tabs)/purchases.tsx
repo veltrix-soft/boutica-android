@@ -52,7 +52,9 @@ export default function PurchasesScreen() {
           refreshControl={
             <RefreshControl
               refreshing={q.isRefetching && !q.isFetchingNextPage}
-              onRefresh={() => q.refetch()}
+              onRefresh={async () => {
+                await q.refetch();
+              }}
               colors={[colors.primary]}
               tintColor={colors.primary}
             />
@@ -61,7 +63,7 @@ export default function PurchasesScreen() {
             if (q.hasNextPage && !q.isFetchingNextPage) q.fetchNextPage();
           }}
           onEndReachedThreshold={0.4}
-          ListHeaderComponent={q.error ? <Notice>{userMessage(q.error)}</Notice> : null}
+          ListHeaderComponent={q.error ? <Notice>{userMessage(q.error)}</Notice> : undefined}
           renderItem={({ item }) => (
             <ListItem
               icon="download-outline"
@@ -80,7 +82,7 @@ export default function PurchasesScreen() {
               onAction={() => router.push('/purchase-new')}
             />
           }
-          ListFooterComponent={q.isFetchingNextPage ? <LoadingState compact /> : null}
+          ListFooterComponent={q.isFetchingNextPage ? <LoadingState compact /> : undefined}
         />
       )}
     </ScreenContainer>

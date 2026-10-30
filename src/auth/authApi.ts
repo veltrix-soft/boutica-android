@@ -1,3 +1,4 @@
+import { API_URL } from '../config';
 import { request } from '../api/client';
 import { ApiError } from '../api/errors';
 import { clearToken, saveToken } from './tokenStorage';
@@ -54,6 +55,16 @@ export const signUp = (input: {
   password: string;
   businessName: string;
 }) => handleAuth('/api/auth/sign-up/email', input);
+
+export const requestPasswordReset = (email: string) =>
+  request('/api/auth/request-password-reset', {
+    method: 'POST',
+    body: {
+      email,
+      redirectTo: new URL('/reset-password', API_URL).toString(),
+    },
+    auth: false,
+  });
 
 export async function signOut(): Promise<void> {
   try {

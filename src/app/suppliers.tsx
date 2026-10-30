@@ -46,7 +46,9 @@ export default function SuppliersScreen() {
           refreshControl={
             <RefreshControl
               refreshing={q.isRefetching && !q.isFetchingNextPage}
-              onRefresh={() => q.refetch()}
+              onRefresh={async () => {
+                await q.refetch();
+              }}
               colors={[colors.primary]}
               tintColor={colors.primary}
             />
@@ -55,7 +57,7 @@ export default function SuppliersScreen() {
             if (q.hasNextPage && !q.isFetchingNextPage) q.fetchNextPage();
           }}
           onEndReachedThreshold={0.4}
-          ListHeaderComponent={q.error ? <Notice>{userMessage(q.error)}</Notice> : null}
+          ListHeaderComponent={q.error ? <Notice>{userMessage(q.error)}</Notice> : undefined}
           renderItem={({ item }) => (
             <ListItem icon="business-outline" title={item.name} subtitle={item.phone} />
           )}
@@ -68,7 +70,7 @@ export default function SuppliersScreen() {
               onAction={() => router.push('/supplier-new')}
             />
           }
-          ListFooterComponent={q.isFetchingNextPage ? <LoadingState compact /> : null}
+          ListFooterComponent={q.isFetchingNextPage ? <LoadingState compact /> : undefined}
         />
       )}
     </ScreenContainer>

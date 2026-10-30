@@ -21,9 +21,8 @@ export default function RegisterScreen() {
       setError('Remplissez tous les champs.');
       return;
     }
-    // Minimum de 8 caractères : valeur par défaut courante, le serveur a le dernier mot
-    if (password.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caractères.');
+    if (password.length < 10) {
+      setError('Le mot de passe doit contenir au moins 10 caractères.');
       return;
     }
     setError(null);
@@ -62,7 +61,7 @@ export default function RegisterScreen() {
           editable={!submitting} />
         <FormField label="Mot de passe" value={password} onChangeText={setPassword}
           secureTextEntry autoCapitalize="none" editable={!submitting}
-          hint="Au moins 8 caractères" onSubmitEditing={onSubmit} />
+          hint="Au moins 10 caractères" onSubmitEditing={onSubmit} />
         {error ? <Notice>{error}</Notice> : null}
         <Button label="Créer mon compte" onPress={onSubmit} loading={submitting} />
 

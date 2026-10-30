@@ -63,6 +63,9 @@ export default function LoginScreen() {
           onSubmitEditing={onSubmit}
         />
         {error ? <Notice>{error}</Notice> : null}
+        <Link href="/forgot-password" style={s.forgotLink}>
+          Mot de passe oublié ?
+        </Link>
         <Button label="Se connecter" onPress={onSubmit} loading={submitting} />
 
         <Link href="/register" style={s.link}>
@@ -82,4 +85,6 @@ const s = StyleSheet.create({
   heading: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
   link: { color: colors.primary, textAlign: 'center', marginTop: spacing.lg,
     fontWeight: '600', fontSize: 15 },
+  forgotLink: { color: colors.primary, textAlign: 'right', marginTop: -spacing.sm,
+    marginBottom: spacing.md, fontWeight: '600', fontSize: 14 },
 });

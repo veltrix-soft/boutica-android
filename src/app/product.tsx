@@ -133,7 +133,7 @@ export default function ProductDetail() {
               />
             )
           }
-          ListFooterComponent={variants.isFetchingNextPage ? <LoadingState compact /> : null}
+          ListFooterComponent={variants.isFetchingNextPage ? <LoadingState compact /> : undefined}
         />
       )}
     </ScreenContainer>

@@ -199,7 +199,7 @@ export default function NewPurchase() {
 
         <SectionHeader title={`Marchandise reçue (${lines.length})`} />
         {lines.length === 0 ? (
-          <Text style={s.empty}>Touchez un article pour l'ajouter.</Text>
+          <Text style={s.empty}>Touchez un article pour l&apos;ajouter.</Text>
         ) : (
           <View style={s.list}>
             {lines.map((l) => {
@@ -288,7 +288,7 @@ export default function NewPurchase() {
       <View style={[s.footer, { paddingBottom: insets.bottom + spacing.sm }]}>
         {error ? <Notice>{error}</Notice> : null}
         <View style={s.totalRow}>
-          <Text style={[s.caption, s.flexText]}>Total de l'achat</Text>
+          <Text style={[s.caption, s.flexText]}>Total de l&apos;achat</Text>
           <Text style={s.totalValue}>{formatMoney(total.toFixed(2))}</Text>
         </View>
         <Button
