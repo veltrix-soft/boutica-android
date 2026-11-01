@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View,
+  Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
-import Decimal from 'decimal.js';
+import { default as Decimal } from 'decimal.js';
 import { Variant } from '../features/products/api';
 import { searchVariants } from '../features/sales/api';
 import { Supplier, listSupplierOptions } from '../features/suppliers/api';
@@ -34,6 +34,7 @@ function lineTotal(l: Line): Decimal | null {
 export default function NewPurchase() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -218,7 +219,7 @@ export default function NewPurchase() {
                       <Ionicons name="trash-outline" size={20} color={colors.textMuted} />
                     </Pressable>
                   </View>
-                  <View style={s.fields}>
+                  <View style={[s.fields, width < 380 && s.fieldsStacked]}>
                     <View style={s.flexField}>
                       <FormField
                         label="Quantité"
@@ -286,18 +287,27 @@ export default function NewPurchase() {
       </ScreenContainer>
 
       <View style={[s.footer, { paddingBottom: insets.bottom + spacing.sm }]}>
-        {error ? <Notice>{error}</Notice> : null}
-        <View style={s.totalRow}>
-          <Text style={[s.caption, s.flexText]}>Total de l&apos;achat</Text>
-          <Text style={s.totalValue}>{formatMoney(total.toFixed(2))}</Text>
+        <View
+          style={[
+            s.footerContent,
+            { paddingHorizontal: Math.max(insets.left, insets.right, spacing.md) },
+          ]}
+        >
+          {error ? <Notice>{error}</Notice> : null}
+          <View style={s.totalRow}>
+            <Text style={[s.caption, s.flexText]}>Total de l&apos;achat</Text>
+            <Text style={s.totalValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+              {formatMoney(total.toFixed(2))}
+            </Text>
+          </View>
+          <Button
+            label="Enregistrer l'achat"
+            icon="checkmark"
+            onPress={submit}
+            loading={m.isPending}
+            disabled={lines.length === 0}
+          />
         </View>
-        <Button
-          label="Enregistrer l'achat"
-          icon="checkmark"
-          onPress={submit}
-          loading={m.isPending}
-          disabled={lines.length === 0}
-        />
       </View>
     </KeyboardAvoidingView>
   );
@@ -317,11 +327,13 @@ const s = StyleSheet.create({
   lineName: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.text },
   trash: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   fields: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  fieldsStacked: { flexDirection: 'column' },
   inlineButtons: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
   picker: { marginTop: spacing.sm },
-  bottomSpace: { height: spacing.md },
+  bottomSpace: { height: 140 },
   footer: { backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border,
-    paddingHorizontal: spacing.md, paddingTop: spacing.sm + 4 },
+    paddingTop: spacing.sm + 4 },
+  footerContent: { width: '100%', maxWidth: 960, alignSelf: 'center' },
   totalRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
   totalValue: { fontSize: 24, fontWeight: '700', color: colors.text },
 });

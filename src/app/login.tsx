@@ -4,6 +4,7 @@ import { Link } from 'expo-router';
 import { useAuth } from '../auth/AuthContext';
 import { userMessage } from '../api/errors';
 import { Button, FormField, Notice, ScreenContainer } from '../components/ui';
+import { BrandMark } from '../components/brand-mark';
 import { colors, spacing } from '../theme/colors';
 
 export default function LoginScreen() {
@@ -35,10 +36,15 @@ export default function LoginScreen() {
       style={s.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScreenContainer scroll contentStyle={s.center}>
+      <ScreenContainer scroll maxContentWidth={480} contentStyle={s.center}>
         <View style={s.brandBox}>
-          <Text style={s.brand}>Boutica</Text>
-          <Text style={s.tag}>Gestion commerciale</Text>
+          <View style={s.brandRow}>
+            <BrandMark />
+            <View style={s.brandCopy}>
+              <Text style={s.brand}>Boutica</Text>
+              <Text style={s.tag}>Gestion commerciale</Text>
+            </View>
+          </View>
         </View>
         <Text style={s.heading}>Connexion</Text>
 
@@ -80,6 +86,8 @@ const s = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   center: { flexGrow: 1, justifyContent: 'center' },
   brandBox: { alignItems: 'center', marginBottom: spacing.xl },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  brandCopy: { flexShrink: 1 },
   brand: { fontSize: 36, fontWeight: '800', color: colors.primary, letterSpacing: 0.5 },
   tag: { fontSize: 14, color: colors.textMuted, marginTop: 2 },
   heading: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: spacing.md },

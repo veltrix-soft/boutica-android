@@ -1,4 +1,4 @@
-import Decimal from 'decimal.js';
+import { default as Decimal } from 'decimal.js';
 
 // L'API renvoie les montants en chaînes ("12500.00")
 export const toDecimal = (v: string | number | null | undefined) =>

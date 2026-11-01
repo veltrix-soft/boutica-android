@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import Decimal from 'decimal.js';
+import { default as Decimal } from 'decimal.js';
 import { formatMoney, parseAmount, toDecimal } from './money';
 
 describe('formatMoney', () => {

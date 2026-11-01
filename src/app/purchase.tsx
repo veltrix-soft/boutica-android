@@ -1,7 +1,7 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import Decimal from 'decimal.js';
+import { default as Decimal } from 'decimal.js';
 import { getPurchase } from '../features/purchases/api';
 import { listAllVariants } from '../features/sales/api';
 import { listSupplierOptions } from '../features/suppliers/api';

@@ -25,6 +25,18 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+## Rappels
+
+Dans **Paramètres > Configurer les rappels**, activez les rappels quotidiens de stock, de créances à suivre ou de ventes, puis choisissez l’heure. Vous pouvez aussi programmer un rappel personnalisé à une date et une heure précises. Les notifications sont planifiées sur l’appareil et peuvent être reçues lorsque l’application est fermée; l’autorisation des notifications doit être accordée.
+
+La section **Alertes du serveur** permet d’activer les alertes de stock faible et de nouvelle vente. Elles sont envoyées aux appareils inscrits après une vente ou le passage du stock à 5 unités ou moins. Les rappels de créances invitent à vérifier le suivi manuellement : le serveur ne fournit pas encore de données de créances.
+
+Les alertes serveur nécessitent une connexion Internet, une permission de notification, un projet EAS et des identifiants APNs/FCM configurés pour le build de production. Les notifications push ne sont pas prises en charge dans Expo Go sur Android : utilisez un build de développement ou de production. Le serveur doit aussi avoir reçu la migration Drizzle `0002_cloudy_scarlet_spider.sql`.
+
+Pour Android, `app.json` référence `./google-services.json`, qui doit provenir de l’application Firebase dont le package Android est exactement `com.boutica.gestion`. Ajoutez aussi la clé de compte de service FCM v1 du même projet Firebase aux identifiants Android d’EAS. Ne placez jamais cette clé privée dans le dépôt. Expo Push utilise ensuite le jeton Expo obtenu avec `getExpoPushTokenAsync`, pas un jeton FCM natif.
+
+Le profil EAS `preview` produit un APK Android et une application iOS de distribution interne pour les tests. L’identifiant Android et le bundle ID iOS sont tous deux `com.boutica.gestion`. Après avoir fourni `google-services.json` et configuré FCM v1 sur EAS, lancez `npx eas-cli@latest build --profile preview --platform android`. Pour iOS, configurez séparément les identifiants Apple/APNs puis lancez `npx eas-cli@latest build --profile preview --platform ios`.
+
 ## Get a fresh project
 
 When you're ready, run:

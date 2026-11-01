@@ -1,9 +1,21 @@
 
-import { View, ActivityIndicator } from 'react-native';
-import { Stack } from 'expo-router';
+import { useEffect } from 'react';
+import { View, ActivityIndicator, Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import { router, Stack } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { AuthProvider, useAuth } from '../auth/AuthContext';
 import { colors } from '../theme/colors';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -14,6 +26,26 @@ const queryClient = new QueryClient({
 
 function RootNavigator() {
   const { status } = useAuth();
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      ScreenOrientation.unlockAsync().catch((error: unknown) => {
+        console.error('Unable to restore Android system orientation behavior:', error);
+      });
+    }
+
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const kind = response.notification.request.content.data?.kind;
+      if (kind === 'low-stock' || kind === 'out-of-stock') {
+        router.push('/(tabs)/products');
+      } else if (kind === 'sale-created') {
+        router.push('/(tabs)/sales');
+      } else {
+        router.push('/reminders');
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   if (status === 'loading') {
     return (
@@ -55,7 +87,8 @@ function RootNavigator() {
         <Stack.Screen name="return" />
         <Stack.Screen name="return-new" />
                 <Stack.Screen name="reports" />
-                        <Stack.Screen name="settings" />
+                <Stack.Screen name="settings" />
+                <Stack.Screen name="reminders" />
       </Stack.Protected>
 
       <Stack.Protected guard={!signedIn}>

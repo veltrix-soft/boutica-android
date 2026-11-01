@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import {
   IconName, ListItem, ScreenContainer, ScreenHeader, SectionHeader,
 } from '../../components/ui';
+import { BrandMark } from '../../components/brand-mark';
 import { spacing } from '../../theme/colors';
 
 const GROUPS: { title: string; items: { label: string; icon: IconName; href: string }[] }[] = [
@@ -31,7 +32,7 @@ export default function MoreScreen() {
   const router = useRouter();
   return (
     <ScreenContainer scroll bottomInset={false}>
-      <ScreenHeader back={false} title="Plus" />
+      <ScreenHeader back={false} title="Plus" right={<BrandMark size={32} />} />
       {GROUPS.map((g) => (
         <View key={g.title}>
           <SectionHeader title={g.title} />

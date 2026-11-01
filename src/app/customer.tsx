@@ -1,7 +1,7 @@
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import Decimal from 'decimal.js';
+import { default as Decimal } from 'decimal.js';
 import { getCustomer } from '../features/customers/api';
 import { listSales } from '../features/sales/api';
 import { userMessage } from '../api/errors';
@@ -110,6 +110,6 @@ export default function CustomerDetail() {
 const s = StyleSheet.create({
   list: { paddingBottom: spacing.lg },
   gap: { height: spacing.sm },
-  metrics: { flexDirection: 'row', gap: spacing.sm },
-  cell: { flex: 1 },
+  metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  cell: { flexGrow: 1, flexBasis: '45%', minWidth: 120 },
 });

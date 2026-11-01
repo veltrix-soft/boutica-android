@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
-import Decimal from 'decimal.js';
+import { default as Decimal } from 'decimal.js';
 import { Variant } from '../features/products/api';
 import { Customer, listCustomerOptions } from '../features/customers/api';
 import { createSale, searchVariants, SaleInput } from '../features/sales/api';
@@ -297,29 +297,39 @@ export default function NewSale() {
             error={discountError}
           />
         </View>
+        <View style={s.bottomSpace} />
       </ScreenContainer>
 
       <View style={[s.footer, { paddingBottom: insets.bottom + spacing.sm }]}>
-        {error ? <Notice>{error}</Notice> : null}
-        <View style={s.totalRow}>
-          <View style={s.flex}>
-            <Text style={s.caption}>Total estimé</Text>
-            {discount && discount.greaterThan(0) ? (
-              <Text style={s.caption}>
-                Sous-total {formatMoney(subtotal.toFixed(2))} − remise {formatMoney(discount.toFixed(2))}
-              </Text>
-            ) : null}
+        <View
+          style={[
+            s.footerContent,
+            { paddingHorizontal: Math.max(insets.left, insets.right, spacing.md) },
+          ]}
+        >
+          {error ? <Notice>{error}</Notice> : null}
+          <View style={s.totalRow}>
+            <View style={s.flex}>
+              <Text style={s.caption}>Total estimé</Text>
+              {discount && discount.greaterThan(0) ? (
+                <Text style={s.caption}>
+                  Sous-total {formatMoney(subtotal.toFixed(2))} − remise {formatMoney(discount.toFixed(2))}
+                </Text>
+              ) : null}
+            </View>
+            <Text style={s.totalValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+              {formatMoney(total.toFixed(2))}
+            </Text>
           </View>
-          <Text style={s.totalValue}>{formatMoney(total.toFixed(2))}</Text>
+          <Text style={s.hintSmall}>Le total définitif est calculé par le serveur.</Text>
+          <Button
+            label="Valider la vente"
+            icon="checkmark"
+            onPress={submit}
+            loading={m.isPending}
+            disabled={cart.length === 0}
+          />
         </View>
-        <Text style={s.hintSmall}>Le total définitif est calculé par le serveur.</Text>
-        <Button
-          label="Valider la vente"
-          icon="checkmark"
-          onPress={submit}
-          loading={m.isPending}
-          disabled={cart.length === 0}
-        />
       </View>
     </KeyboardAvoidingView>
   );
@@ -336,7 +346,7 @@ const s = StyleSheet.create({
     borderColor: colors.border, padding: spacing.md },
   lineTop: { flexDirection: 'row', gap: spacing.sm },
   lineName: { fontSize: 15, fontWeight: '600', color: colors.text },
-  lineTotal: { fontSize: 15, fontWeight: '600', color: colors.text },
+  lineTotal: { flexShrink: 1, fontSize: 15, fontWeight: '600', color: colors.text, textAlign: 'right' },
   lineBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     marginTop: spacing.sm },
   trash: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
@@ -349,8 +359,10 @@ const s = StyleSheet.create({
   inlineButtons: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
   picker: { marginTop: spacing.sm },
   discount: { marginTop: spacing.md },
+  bottomSpace: { height: 160 },
   footer: { backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border,
-    paddingHorizontal: spacing.md, paddingTop: spacing.sm + 4 },
+    paddingTop: spacing.sm + 4 },
+  footerContent: { width: '100%', maxWidth: 960, alignSelf: 'center' },
   totalRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   totalValue: { fontSize: 24, fontWeight: '700', color: colors.text },
 });

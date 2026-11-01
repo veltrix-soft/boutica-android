@@ -3,9 +3,11 @@ import {
   ReactNode,
 } from 'react';
 import { setUnauthorizedHandler } from '../api/client';
+import { ApiError } from '../api/errors';
 import { signUp as signUpApi } from './authApi';
 import * as authApi from './authApi';
 import { clearToken, getToken } from './tokenStorage';
+import { unregisterServerPushDevice } from '../features/reminders/push-alert-service';
 
 type Status = 'loading' | 'signedIn' | 'signedOut';
 
@@ -14,6 +16,10 @@ type AuthValue = {
   user: authApi.AuthUser | null;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (input: Parameters<typeof authApi.signUp>[0]) => Promise<void>;
+  refreshUser: () => Promise<void>;
+  updateName: (name: string) => Promise<void>;
+  requestEmailChange: (email: string) => Promise<void>;
+  sendEmailVerification: () => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -57,8 +63,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const refreshUser = useCallback(async () => {
+    try {
+      setUser(await authApi.getCurrentUser());
+    } catch (error) {
+      if (error instanceof ApiError && error.kind === 'unauthorized') {
+        await clearToken();
+        setUser(null);
+        setStatus('signedOut');
+      }
+
+      throw error;
+    }
+  }, []);
+
+  const updateName = useCallback(async (name: string) => {
+    await authApi.updateName(name);
+    setUser((currentUser) => currentUser ? { ...currentUser, name } : currentUser);
+  }, []);
+
+  const requestEmailChange = useCallback(
+    (email: string) => authApi.requestEmailChange(email),
+    [],
+  );
+
+  const userEmail = user?.email;
+  const sendEmailVerification = useCallback(async () => {
+    if (!userEmail) {
+      throw new ApiError('validation', 'Aucune adresse e-mail n’est associée à ce compte.');
+    }
+
+    await authApi.sendEmailVerification(userEmail);
+  }, [userEmail]);
+
   const signOut = useCallback(async () => {
     try {
+      try {
+        await unregisterServerPushDevice();
+      } catch (error) {
+        console.error('Unable to unregister server push notifications before sign-out:', error);
+      }
       await authApi.signOut();
     } finally {
       setUser(null);
@@ -67,8 +111,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ status, user, signIn, signUp, signOut }),
-    [status, user, signIn, signUp, signOut],
+    () => ({
+      status,
+      user,
+      signIn,
+      signUp,
+      refreshUser,
+      updateName,
+      requestEmailChange,
+      sendEmailVerification,
+      signOut,
+    }),
+    [status, user, signIn, signUp, refreshUser, updateName, requestEmailChange, sendEmailVerification, signOut],
   );
 
   return (

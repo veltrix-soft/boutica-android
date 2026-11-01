@@ -3,12 +3,15 @@ import { request } from '../api/client';
 import { ApiError } from '../api/errors';
 import { clearToken, saveToken } from './tokenStorage';
 
+const SIGN_UP_TIMEOUT_MS = 90_000;
+
 export type AuthUser = {
   id: string;
   businessId: string;
   role: string;
   name?: string;
   email?: string;
+  emailVerified?: boolean;
 };
 
 type AuthResponse = { token: string; user: AuthUser };
@@ -16,6 +19,7 @@ type AuthResponse = { token: string; user: AuthUser };
 async function handleAuth(
   path: string,
   body: unknown,
+  timeoutMs?: number,
 ): Promise<AuthUser> {
   let res: AuthResponse;
 
@@ -24,6 +28,7 @@ async function handleAuth(
       method: 'POST',
       body,
       auth: false,
+      ...(timeoutMs ? { timeoutMs } : {}),
     });
   } catch (e) {
     if (e instanceof ApiError && e.kind === 'unauthorized') {
@@ -54,7 +59,39 @@ export const signUp = (input: {
   email: string;
   password: string;
   businessName: string;
-}) => handleAuth('/api/auth/sign-up/email', input);
+}) =>
+  handleAuth('/api/auth/sign-up/email', input, SIGN_UP_TIMEOUT_MS);
+
+export async function getCurrentUser(): Promise<AuthUser> {
+  const session = await request<{ user: AuthUser } | null>('/api/auth/get-session');
+
+  if (!session?.user) {
+    throw new ApiError('unauthorized', 'Session expirée. Reconnectez-vous.');
+  }
+
+  return session.user;
+}
+
+export async function updateName(name: string): Promise<void> {
+  await request('/api/auth/update-user', {
+    method: 'POST',
+    body: { name },
+  });
+}
+
+export async function requestEmailChange(newEmail: string): Promise<void> {
+  await request('/api/auth/change-email', {
+    method: 'POST',
+    body: { newEmail, callbackURL: 'bouticaandroid://settings' },
+  });
+}
+
+export async function sendEmailVerification(email: string): Promise<void> {
+  await request('/api/auth/send-verification-email', {
+    method: 'POST',
+    body: { email, callbackURL: 'bouticaandroid://settings' },
+  });
+}
 
 export const requestPasswordReset = (email: string) =>
   request('/api/auth/request-password-reset', {

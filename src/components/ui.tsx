@@ -1,7 +1,7 @@
-import { ComponentProps, ReactElement, ReactNode, useState } from 'react';
+import { ComponentProps, ReactElement, ReactNode, RefObject, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Pressable, RefreshControlProps, ScrollView,
-  StyleProp, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle,
+  ActivityIndicator, Alert, Pressable, RefreshControlProps, ScrollView, ScrollViewInstance,
+  StyleProp, StyleSheet, Text, TextInput, TextInputProps, useWindowDimensions, View, ViewStyle,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,24 +15,37 @@ type Tone = 'default' | 'success' | 'danger' | 'warning';
 /* ---------- Conteneur d'écran (zones de sécurité) ---------- */
 export function ScreenContainer({
   children, scroll = false, refreshControl, bottomInset = true, contentStyle,
+  maxContentWidth = 960, scrollRef,
 }: {
   children: ReactNode;
   scroll?: boolean;
   refreshControl?: ReactElement<RefreshControlProps>;
   bottomInset?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
+  maxContentWidth?: number;
+  scrollRef?: RefObject<ScrollViewInstance | null>;
 }) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const horizontalPadding = Math.max(
+    insets.left,
+    width < 360 ? spacing.sm + 4 : spacing.md,
+  );
   if (scroll) {
     return (
       <ScrollView
+        ref={scrollRef}
         style={s.screen}
         refreshControl={refreshControl}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           {
+            width: '100%',
+            maxWidth: maxContentWidth,
+            alignSelf: 'center',
             paddingTop: insets.top,
-            paddingHorizontal: spacing.md,
+            paddingHorizontal: horizontalPadding,
+            paddingRight: Math.max(insets.right, horizontalPadding),
             paddingBottom: (bottomInset ? insets.bottom : 0) + spacing.lg,
           },
           contentStyle,
@@ -47,8 +60,12 @@ export function ScreenContainer({
       style={[
         s.screen,
         {
+          width: '100%',
+          maxWidth: maxContentWidth,
+          alignSelf: 'center',
           paddingTop: insets.top,
-          paddingHorizontal: spacing.md,
+          paddingHorizontal: horizontalPadding,
+          paddingRight: Math.max(insets.right, horizontalPadding),
           paddingBottom: bottomInset ? insets.bottom : 0,
         },
       ]}
@@ -101,9 +118,17 @@ export function SectionHeader({
 }: { title: string; actionLabel?: string; onAction?: () => void }) {
   return (
     <View style={s.section}>
-      <Text style={s.sectionTitle}>{title}</Text>
+      <View style={s.sectionHeading}>
+        <View style={s.sectionMarker} />
+        <Text style={s.sectionTitle}>{title}</Text>
+      </View>
       {actionLabel && onAction ? (
-        <Pressable onPress={onAction} hitSlop={8} accessibilityRole="button">
+        <Pressable
+          onPress={onAction}
+          hitSlop={8}
+          accessibilityRole="button"
+          style={({ pressed }) => [s.sectionActionButton, pressed && s.pressed]}
+        >
           <Text style={s.sectionAction}>{actionLabel}</Text>
         </Pressable>
       ) : null}
@@ -451,33 +476,44 @@ const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   pressed: { backgroundColor: colors.surfaceMuted },
 
-  header: { flexDirection: 'row', alignItems: 'center', minHeight: 56, gap: spacing.sm },
-  iconBtn: { width: 40, height: 40, marginLeft: -spacing.sm, alignItems: 'center', justifyContent: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', minHeight: 56, gap: spacing.sm, marginBottom: spacing.xs },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    marginLeft: -spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.md,
+  },
   headerText: { flex: 1 },
   title: { ...typography.title, color: colors.text },
   subtitle: { ...typography.caption, color: colors.textMuted },
 
   section: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     marginTop: spacing.lg, marginBottom: spacing.sm },
+  sectionHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  sectionMarker: { width: 3, height: 18, borderRadius: 2, backgroundColor: colors.primary },
   sectionTitle: { ...typography.heading, color: colors.text },
   sectionAction: { ...typography.bodyStrong, color: colors.primary },
+  sectionActionButton: { paddingHorizontal: spacing.xs, paddingVertical: spacing.xs },
 
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 48,
-    paddingHorizontal: spacing.md, borderRadius: radius.md, borderWidth: 1 },
+    paddingHorizontal: spacing.md, borderRadius: 12, borderWidth: 1 },
   btnCompact: { minHeight: 40, paddingHorizontal: spacing.md - 2 },
   btnAuto: { alignSelf: 'flex-start' },
   btnIcon: { marginRight: spacing.xs + 2 },
   btnText: { ...typography.bodyStrong },
 
-  card: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1,
+  card: { backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1,
     borderColor: colors.border, padding: spacing.md },
   metricLabel: { ...typography.caption, color: colors.textMuted },
   metricValue: { ...typography.heading, fontVariant: ['tabular-nums'], marginTop: 2 },
   metricLarge: { fontSize: 28, lineHeight: 34, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 2 },
   metricHint: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
 
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm + 4 },
-  rowIcon: { width: 36, height: 36, borderRadius: radius.sm, backgroundColor: colors.surfaceMuted,
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm + 4, minHeight: 44 },
+  rowIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.alertBg,
     alignItems: 'center', justifyContent: 'center' },
   rowMain: { flex: 1 },
   rowTitle: { ...typography.bodyStrong, color: colors.text },
@@ -491,8 +527,8 @@ const s = StyleSheet.create({
   badgeText: { ...typography.label },
 
   search: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 44,
-    paddingHorizontal: spacing.sm + 4, backgroundColor: colors.surfaceMuted,
-    borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
+    paddingHorizontal: spacing.sm + 4, backgroundColor: colors.surface,
+    borderRadius: 12, borderWidth: 1, borderColor: colors.border },
   searchInput: { flex: 1, ...typography.body, color: colors.text, paddingVertical: spacing.sm },
 
   field: { marginBottom: spacing.md },

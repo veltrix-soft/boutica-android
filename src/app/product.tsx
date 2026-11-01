@@ -150,8 +150,8 @@ const s = StyleSheet.create({
     borderColor: colors.border, padding: spacing.md, gap: spacing.sm },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   name: { fontSize: 16, fontWeight: '600', color: colors.text },
-  metrics: { flexDirection: 'row', gap: spacing.sm },
-  metric: { flex: 1 },
+  metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  metric: { flexGrow: 1, flexBasis: '28%', minWidth: 84 },
   metricValue: { fontSize: 15, fontWeight: '600', color: colors.textMuted, marginTop: 2 },
   metricStrong: { color: colors.text },
 });

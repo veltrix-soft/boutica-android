@@ -100,5 +100,5 @@ const s = StyleSheet.create({
   chipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { fontSize: 13, fontWeight: '600', color: colors.text },
   chipTextOn: { color: '#FFFFFF' },
-  buttons: { flexDirection: 'row', gap: spacing.sm },
+  buttons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
 });

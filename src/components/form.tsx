@@ -11,7 +11,7 @@ export function FormScreen({
       style={s.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScreenContainer scroll>
+      <ScreenContainer scroll maxContentWidth={640}>
         <ScreenHeader title={title} subtitle={subtitle} />
         {children}
       </ScreenContainer>

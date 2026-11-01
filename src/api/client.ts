@@ -14,6 +14,7 @@ type Options = {
   body?: unknown;
   idempotencyKey?: string;
   auth?: boolean;
+  timeoutMs?: number;
 };
 
 function kindFor(status: number): ApiErrorKind {
@@ -43,6 +44,7 @@ export async function request<T>(
     body,
     idempotencyKey,
     auth = true,
+    timeoutMs = REQUEST_TIMEOUT_MS,
   } = opts;
 
   const url = new URL(API_URL + path);
@@ -80,29 +82,36 @@ export async function request<T>(
 
   const controller = new AbortController();
 
-  const timer = setTimeout(
-    () => controller.abort(),
-    REQUEST_TIMEOUT_MS,
-  );
-
   let res: Response;
-
+  let text: string;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    res = await fetch(url.toString(), {
-      method,
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-      signal: controller.signal,
-    });
-  } catch {
-    throw controller.signal.aborted
-      ? new ApiError('timeout', 'Délai dépassé')
-      : new ApiError('network', 'Connexion impossible');
+    ({ res, text } = await Promise.race([
+      (async () => {
+        try {
+          const response = await fetch(url.toString(), {
+            method,
+            headers,
+            body: body !== undefined ? JSON.stringify(body) : undefined,
+            signal: controller.signal,
+          });
+          return { res: response, text: await response.text() };
+        } catch {
+          throw controller.signal.aborted
+            ? new ApiError('timeout', 'Délai dépassé')
+            : new ApiError('network', 'Connexion impossible');
+        }
+      })(),
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          controller.abort();
+          reject(new ApiError('timeout', 'Délai dépassé'));
+        }, timeoutMs);
+      }),
+    ]));
   } finally {
-    clearTimeout(timer);
+    if (timer !== undefined) clearTimeout(timer);
   }
-
-  const text = await res.text();
 
   let data: any;
 

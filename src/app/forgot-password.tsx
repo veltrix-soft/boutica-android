@@ -4,6 +4,7 @@ import { Link } from 'expo-router';
 import { userMessage } from '../api/errors';
 import { requestPasswordReset } from '../auth/authApi';
 import { Button, FormField, Notice, ScreenContainer } from '../components/ui';
+import { BrandMark } from '../components/brand-mark';
 import { colors, spacing } from '../theme/colors';
 
 export default function ForgotPasswordScreen() {
@@ -37,10 +38,15 @@ export default function ForgotPasswordScreen() {
       style={s.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScreenContainer scroll contentStyle={s.center}>
+      <ScreenContainer scroll maxContentWidth={480} contentStyle={s.center}>
         <View style={s.brandBox}>
-          <Text style={s.brand}>Boutica</Text>
-          <Text style={s.tag}>Récupération du compte</Text>
+          <View style={s.brandRow}>
+            <BrandMark />
+            <View>
+              <Text style={s.brand}>Boutica</Text>
+              <Text style={s.tag}>Récupération du compte</Text>
+            </View>
+          </View>
         </View>
         <Text style={s.heading}>Mot de passe oublié</Text>
         <Text style={s.description}>
@@ -87,6 +93,7 @@ const s = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   center: { flexGrow: 1, justifyContent: 'center' },
   brandBox: { alignItems: 'center', marginBottom: spacing.xl },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   brand: { fontSize: 36, fontWeight: '800', color: colors.primary, letterSpacing: 0.5 },
   tag: { fontSize: 14, color: colors.textMuted, marginTop: 2 },
   heading: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },

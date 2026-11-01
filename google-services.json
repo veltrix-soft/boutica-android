@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "569055084164",
+    "project_id": "boutica-production",
+    "storage_bucket": "boutica-production.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:569055084164:android:8ee241601bf49f9669ccd1",
+        "android_client_info": {
+          "package_name": "com.boutica.gestion"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC9PwsPjZY5xTd4U1JI7O0Osi3Ve0KFR68"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

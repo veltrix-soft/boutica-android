@@ -6,7 +6,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
-import Decimal from 'decimal.js';
+import { default as Decimal } from 'decimal.js';
 import { getSale, listAllVariants } from '../features/sales/api';
 import {
   createReturn, getReturn, listReturns, ReturnCondition, ReturnInput,
@@ -203,26 +203,36 @@ export default function NewReturn() {
               <FormField label="Motif (facultatif)" value={reason} onChangeText={setReason}
                 multiline maxLength={500} editable={!m.isPending} />
             </View>
+            <View style={s.bottomSpace} />
           </>
         ) : null}
       </ScreenContainer>
 
       {completed ? (
         <View style={[s.footer, { paddingBottom: insets.bottom + spacing.sm }]}>
-          {error ? <Notice>{error}</Notice> : null}
-          <View style={s.totalRow}>
-            <Text style={[s.caption, s.flexText]}>
-              Montant estimé (calcul final par le serveur)
-            </Text>
-            <Text style={s.totalValue}>{formatMoney(estimate.toFixed(2))}</Text>
+          <View
+            style={[
+              s.footerContent,
+              { paddingHorizontal: Math.max(insets.left, insets.right, spacing.md) },
+            ]}
+          >
+            {error ? <Notice>{error}</Notice> : null}
+            <View style={s.totalRow}>
+              <Text style={[s.caption, s.flexText]}>
+                Montant estimé (calcul final par le serveur)
+              </Text>
+              <Text style={s.totalValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+                {formatMoney(estimate.toFixed(2))}
+              </Text>
+            </View>
+            <Button
+              label="Enregistrer le retour"
+              icon="checkmark"
+              onPress={onSubmit}
+              loading={m.isPending}
+              disabled={selectedCount === 0}
+            />
           </View>
-          <Button
-            label="Enregistrer le retour"
-            icon="checkmark"
-            onPress={onSubmit}
-            loading={m.isPending}
-            disabled={selectedCount === 0}
-          />
         </View>
       ) : null}
     </KeyboardAvoidingView>
@@ -250,9 +260,11 @@ const s = StyleSheet.create({
   chipText: { fontSize: 13, fontWeight: '600', color: colors.text },
   chipTextOn: { color: '#FFFFFF' },
   reason: { marginTop: spacing.md },
+  bottomSpace: { height: 140 },
   footer: { backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border,
-    paddingHorizontal: spacing.md, paddingTop: spacing.sm + 4 },
+    paddingTop: spacing.sm + 4 },
+  footerContent: { width: '100%', maxWidth: 960, alignSelf: 'center' },
   totalRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     marginBottom: spacing.sm },
-  totalValue: { fontSize: 22, fontWeight: '700', color: colors.text },
+  totalValue: { flexShrink: 1, fontSize: 22, fontWeight: '700', color: colors.text, textAlign: 'right' },
 });
