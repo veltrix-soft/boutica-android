@@ -4,8 +4,8 @@ import { StyleSheet } from 'react-native';
 export function BrandMark({ size = 48 }: { size?: number }) {
   return (
     <Image
-      source={require('../../assets/images/boutica-mark-red.png')}
-      style={[s.mark, { width: size, height: size }]}
+      source={require('../../assets/images/boutica-app-icon.png')}
+      style={[s.mark, { width: size, height: size, borderRadius: size * 0.15 }]}
       contentFit="contain"
       accessibilityLabel="Logo de Boutica"
     />
