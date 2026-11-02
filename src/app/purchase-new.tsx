@@ -162,7 +162,7 @@ export default function NewPurchase() {
   return (
     <KeyboardAvoidingView
       style={s.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScreenContainer scroll bottomInset={false}>
         <ScreenHeader title="Réception d'achat" />

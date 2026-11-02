@@ -36,7 +36,7 @@ export default function ForgotPasswordScreen() {
   return (
     <KeyboardAvoidingView
       style={s.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScreenContainer scroll maxContentWidth={480} contentStyle={s.center}>
         <View style={s.brandBox}>
@@ -106,3 +106,4 @@ const s = StyleSheet.create({
     fontSize: 15,
   },
 });
+

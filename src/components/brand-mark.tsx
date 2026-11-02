@@ -15,3 +15,4 @@ export function BrandMark({ size = 48 }: { size?: number }) {
 const s = StyleSheet.create({
   mark: { flexShrink: 0 },
 });
+

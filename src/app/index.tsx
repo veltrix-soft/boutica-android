@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter, type Href } from 'expo-router';
-import { ApiError, userMessage } from '../api/errors';
+import { ApiError } from '../api/errors';
 import { StartupSplashScreen } from '../components/startup-splash-screen';
 import { useAuth } from '../auth/AuthContext';
 import { hasCompletedOnboarding } from '../features/onboarding/onboarding-storage';
@@ -50,44 +50,29 @@ export default function StartupScreen() {
 
       if (!active) return;
       setDestination(nextRoute);
-      setStatusMessage('Connexion à Boutica Cloud…');
 
-      try {
-        await checkBackendHealth();
-      } catch (healthError) {
-        if (active) {
-          const networkMessage = userMessage(healthError);
-          const sessionMessage =
-            status === 'signedIn'
-              ? 'Votre session enregistrée est conservée. '
-              : '';
-          setError(
-            `Boutica Cloud est temporairement indisponible. ${sessionMessage}${networkMessage} Vous pouvez continuer et réessayer plus tard.`,
-          );
-        }
-        return;
-      }
+      // Navigation immédiate pour éviter l'attente réseau au redémarrage.
+      router.replace(nextRoute);
 
-      if (status === 'signedIn') {
-        setStatusMessage('Vérification de votre session…');
+      // Vérifications réseau en arrière-plan (non bloquantes).
+      void (async () => {
         try {
-          await withStartupTimeout(refreshUser());
-        } catch (sessionError) {
-          if (!active) return;
-          if (sessionError instanceof ApiError && sessionError.kind === 'unauthorized') {
-            return;
-          }
-
-          setError(
-            sessionError instanceof Error && sessionError.message === 'startup-timeout'
-              ? 'La vérification de votre session prend trop de temps. Votre session reste enregistrée et vous pouvez continuer.'
-              : `La session ne peut pas être vérifiée pour le moment. Votre session reste enregistrée. ${userMessage(sessionError)}`,
-          );
-          return;
+          await checkBackendHealth();
+        } catch (healthError) {
+          console.error('Boutica Cloud indisponible au démarrage:', healthError);
         }
-      }
 
-      if (active) router.replace(nextRoute);
+        if (status === 'signedIn') {
+          try {
+            await withStartupTimeout(refreshUser());
+          } catch (sessionError) {
+            if (sessionError instanceof ApiError && sessionError.kind === 'unauthorized') {
+              return;
+            }
+            console.error('Vérification de session échouée au démarrage:', sessionError);
+          }
+        }
+      })();
     }
 
     void initialize();
@@ -106,3 +91,4 @@ export default function StartupScreen() {
     />
   );
 }
+

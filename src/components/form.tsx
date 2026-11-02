@@ -9,7 +9,7 @@ export function FormScreen({
   return (
     <KeyboardAvoidingView
       style={s.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScreenContainer scroll maxContentWidth={640}>
         <ScreenHeader title={title} subtitle={subtitle} />

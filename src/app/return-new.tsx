@@ -127,7 +127,7 @@ export default function NewReturn() {
   return (
     <KeyboardAvoidingView
       style={s.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScreenContainer scroll bottomInset={false}>
         <ScreenHeader title="Retour d'articles" subtitle="Choisissez les articles rapportés" />
