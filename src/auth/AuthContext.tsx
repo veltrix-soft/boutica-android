@@ -25,15 +25,34 @@ type AuthValue = {
 
 const AuthContext = createContext<AuthValue | null>(null);
 
+const TOKEN_RESTORE_TIMEOUT_MS = 8000;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>('loading');
   const [user, setUser] = useState<authApi.AuthUser | null>(null);
 
   // Au démarrage : y a-t-il un badge dans le coffre ?
   useEffect(() => {
+    let active = true;
+    const timeout = setTimeout(() => {
+      console.error('Session restoration timed out; preserving the stored token.');
+      if (active) setStatus('signedOut');
+    }, TOKEN_RESTORE_TIMEOUT_MS);
+
     getToken()
-      .then((t) => setStatus(t ? 'signedIn' : 'signedOut'))
-      .catch(() => setStatus('signedOut'));
+      .then((token) => {
+        if (active) setStatus(token ? 'signedIn' : 'signedOut');
+      })
+      .catch((error: unknown) => {
+        console.error('Unable to restore the saved session:', error);
+        if (active) setStatus('signedOut');
+      })
+      .finally(() => clearTimeout(timeout));
+
+    return () => {
+      active = false;
+      clearTimeout(timeout);
+    };
   }, []);
 
   // Si le serveur refuse le badge (session expirée), on revient à la connexion

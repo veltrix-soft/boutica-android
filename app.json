@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Boutica-android",
+    "name": "Boutica",
     "slug": "Boutica-android",
     "version": "1.0.0",
     "orientation": "default",
@@ -13,6 +13,7 @@
     },
     "android": {
       "package": "com.boutica.gestion",
+      "versionCode": 2,
       "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {

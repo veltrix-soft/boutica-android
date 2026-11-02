@@ -38,13 +38,9 @@ export default function LoginScreen() {
     >
       <ScreenContainer scroll maxContentWidth={480} contentStyle={s.center}>
         <View style={s.brandBox}>
-          <View style={s.brandRow}>
-            <BrandMark />
-            <View style={s.brandCopy}>
-              <Text style={s.brand}>Boutica</Text>
-              <Text style={s.tag}>Gestion commerciale</Text>
-            </View>
-          </View>
+          <BrandMark size={68} />
+          <Text style={s.brand}>Boutica</Text>
+          <Text style={s.tag}>Gestion commerciale</Text>
         </View>
         <Text style={s.heading}>Connexion</Text>
 
@@ -85,11 +81,9 @@ export default function LoginScreen() {
 const s = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   center: { flexGrow: 1, justifyContent: 'center' },
-  brandBox: { alignItems: 'center', marginBottom: spacing.xl },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  brandCopy: { flexShrink: 1 },
-  brand: { fontSize: 36, fontWeight: '800', color: colors.primary, letterSpacing: 0.5 },
-  tag: { fontSize: 14, color: colors.textMuted, marginTop: 2 },
+  brandBox: { alignItems: 'center', marginBottom: spacing.xl, gap: spacing.xs },
+  brand: { fontSize: 30, fontWeight: '800', color: colors.primary, letterSpacing: 0.5 },
+  tag: { fontSize: 14, lineHeight: 20, color: colors.textMuted, marginTop: 2, textAlign: 'center' },
   heading: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
   link: { color: colors.primary, textAlign: 'center', marginTop: spacing.lg,
     fontWeight: '600', fontSize: 15 },

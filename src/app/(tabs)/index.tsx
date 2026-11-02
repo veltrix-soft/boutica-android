@@ -12,7 +12,6 @@ import {
   ScreenContainer, SectionHeader, StatusBadge,
 } from '../../components/ui';
 import { colors, spacing } from '../../theme/colors';
-import { BrandMark } from '../../components/brand-mark';
 
 type Dashboard = {
   period: { from: string; to: string };
@@ -66,10 +65,7 @@ export default function Home() {
     >
       <View style={s.header}>
         <View style={s.headerBrand}>
-          <View style={s.brandGroup}>
-            <BrandMark size={32} />
-            <Text style={s.brand}>Boutica</Text>
-          </View>
+          <Text style={s.brand}>Boutica</Text>
           <Text style={s.caption} numberOfLines={1}>
             {user?.name ? `Bonjour, ${user.name}` : 'Bonjour'}
           </Text>
@@ -229,7 +225,6 @@ const s = StyleSheet.create({
   flex: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', minHeight: 56 },
   headerBrand: { flex: 1, minWidth: 0 },
-  brandGroup: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   brand: { fontSize: 24, fontWeight: '800', color: colors.primary, letterSpacing: 0.2 },
   caption: { fontSize: 13, color: colors.textMuted },
   iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },

@@ -1,48 +1,49 @@
-import type { ColorValue } from 'react-native';
-import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { NativeTabs } from 'expo-router/native-tabs';
 import { colors } from '../../theme/colors';
-import type { IconName } from '../../components/ui';
-
-function icon(name: IconName, focusedName: IconName) {
-  return function TabIcon({ color, focused }: { color: ColorValue; focused: boolean }) {
-    const iconColor = typeof color === 'number' ? colors.textMuted : color ?? colors.textMuted;
-
-    return (
-      <Ionicons
-        name={focused ? focusedName : name}
-        size={22}
-        color={iconColor}
-      />
-    );
-  };
-}
 
 export default function TabsLayout() {
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          paddingTop: 5,
-          shadowColor: colors.text,
-          shadowOpacity: 0.06,
-          shadowRadius: 8,
-          elevation: 8,
-        },
-      }}
+    <NativeTabs
+      backgroundColor={colors.surface}
+      tintColor={colors.primary}
+      labelStyle={{ color: colors.textMuted }}
+      indicatorColor={colors.alertBg}
     >
-      <Tabs.Screen name="index" options={{ title: 'Accueil', tabBarIcon: icon('home-outline', 'home') }} />
-      <Tabs.Screen name="sales" options={{ title: 'Ventes', tabBarIcon: icon('receipt-outline', 'receipt') }} />
-      <Tabs.Screen name="products" options={{ title: 'Produits', tabBarIcon: icon('cube-outline', 'cube') }} />
-      <Tabs.Screen name="purchases" options={{ title: 'Achats', tabBarIcon: icon('download-outline', 'download') }} />
-      <Tabs.Screen name="more" options={{ title: 'Plus', tabBarIcon: icon('grid-outline', 'grid') }} />
-    </Tabs>
+      <NativeTabs.Trigger name="index">
+        <NativeTabs.Trigger.Label>Accueil</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          sf={{ default: 'house', selected: 'house.fill' }}
+          md={{ default: 'home', selected: 'home_filled' }}
+        />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="sales">
+        <NativeTabs.Trigger.Label>Ventes</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          sf={{ default: 'receipt', selected: 'receipt.fill' }}
+          md={{ default: 'receipt_long', selected: 'receipt_long' }}
+        />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="products">
+        <NativeTabs.Trigger.Label>Produits</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          sf={{ default: 'cube.box', selected: 'cube.box.fill' }}
+          md={{ default: 'inventory_2', selected: 'inventory_2' }}
+        />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="purchases">
+        <NativeTabs.Trigger.Label>Achats</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          sf={{ default: 'shippingbox', selected: 'shippingbox.fill' }}
+          md={{ default: 'shopping_bag', selected: 'shopping_bag' }}
+        />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="more">
+        <NativeTabs.Trigger.Label>Plus</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          sf={{ default: 'ellipsis', selected: 'ellipsis' }}
+          md={{ default: 'more_horiz', selected: 'more_horiz' }}
+        />
+      </NativeTabs.Trigger>
+    </NativeTabs>
   );
 }

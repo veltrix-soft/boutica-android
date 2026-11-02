@@ -2,6 +2,8 @@ export const colors = {
   // Marque
   primary: '#9A050E',
   primaryPressed: '#7C040B',
+  primaryDark: '#5F0203',
+  primarySecondary: '#AA3035',
   alertBg: '#FCEAEC',
 
   // Neutres

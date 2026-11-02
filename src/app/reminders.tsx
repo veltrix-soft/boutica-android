@@ -63,7 +63,7 @@ export default function RemindersScreen() {
               setServerPush(DEFAULT_SERVER_PUSH_SETTINGS);
               setNotice({
                 tone: 'warning',
-                text: error instanceof Error ? error.message : 'Impossible de synchroniser les alertes serveur.',
+                text: error instanceof Error ? error.message : 'Impossible de synchroniser les notifications de votre commerce.',
               });
             }
             return;
@@ -111,12 +111,12 @@ export default function RemindersScreen() {
     setNotice(null);
     try {
       await saveServerPushSettings(settings);
-      setNotice({ tone: 'success', text: 'Les alertes serveur ont été mises à jour.' });
+      setNotice({ tone: 'success', text: 'Les notifications de votre commerce ont été mises à jour.' });
     } catch (error) {
       setServerPush(previous);
       setNotice({
         tone: 'danger',
-        text: error instanceof Error ? error.message : 'Impossible d’activer les alertes serveur.',
+        text: error instanceof Error ? error.message : 'Impossible d’activer les notifications de votre commerce.',
       });
     } finally {
       setSavingServerPush(false);
@@ -201,7 +201,7 @@ export default function RemindersScreen() {
       <ScreenHeader title="Rappels" subtitle="Notifications sur cet appareil" />
       {notice ? <Notice tone={notice.tone}>{notice.text}</Notice> : null}
 
-      <SectionHeader title="Alertes du serveur" />
+      <SectionHeader title="Notifications de mon commerce" />
       <View style={s.card}>
         <Text style={s.description}>
           Recevez une notification lorsqu’une vente est enregistrée ou qu’un stock passe à 5 unités ou moins.
